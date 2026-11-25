@@ -29,6 +29,8 @@ const api = {
   list: vi.fn(),
   change: vi.fn(),
   verify: vi.fn(),
+  issuancePolicy: vi.fn(),
+  saveIssuancePolicy: vi.fn(),
 };
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 const notification = { success: vi.fn(), error: vi.fn(), info: vi.fn() };
@@ -70,6 +72,7 @@ beforeEach(() => {
     revision: crypto.randomUUID(),
   });
   api.list.mockResolvedValue({ connections: [connection], canManage: true, environment: 'TEST' });
+  api.issuancePolicy.mockResolvedValue(null);
   Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
     value: { writeText: vi.fn().mockResolvedValue(undefined) },
@@ -112,6 +115,27 @@ it('renders the complete accessible four-step guide and official DGI actions', a
   expect(fr.FISCALITY.GUIDE.STEP_4.CONNECTION).toContain('Ajouter une connexion');
   expect(fr.FISCALITY.GUIDE.STEP_4.AFTER).toContain("l'état de votre connexion");
   expect(guide.textContent).not.toMatch(/PRODUCTION|TEST/);
+});
+it('saves the selected issuance point with the current policy version', async () => {
+  const point = 'a6320943-0f8f-4bca-8306-3df496124771';
+  const fixture = TestBed.createComponent(FiscalityPage);
+  fixture.detectChanges();
+  fixture.componentInstance.policyPoint.setValue(point);
+  fixture.componentInstance.loadPolicy();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(api.issuancePolicy).toHaveBeenCalledWith(context, point);
+    expect(fixture.componentInstance.issuancePolicy.isPending()).toBe(false);
+    expect(fixture.componentInstance.canManage()).toBe(true);
+  });
+  fixture.componentInstance.policyConnection.setValue(connection.connectionId);
+  fixture.componentInstance.policyEnabled.setValue(true);
+  api.saveIssuancePolicy.mockResolvedValue({ issuancePointId: point, connectionId: connection.connectionId,
+    environment: 'TEST', enabled: true, version: 1, updatedAt: '2026-11-25T00:00:00.000Z', updatedBy: 'owner' });
+  await fixture.componentInstance.savePolicy();
+  expect(api.saveIssuancePolicy).toHaveBeenCalledWith(context, { issuancePointId: point,
+    connectionId: connection.connectionId, environment: 'TEST', enabled: true, expectedVersion: 0 });
+  expect(notification.success).toHaveBeenCalled();
 });
 it('displays and copies authoritative registered references including country of origin', async () => {
   api.approval.mockResolvedValue({

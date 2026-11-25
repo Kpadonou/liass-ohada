@@ -8,6 +8,9 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { MatInputModule } from '@angular/material/input';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import {
   QueryClient,
@@ -25,6 +28,7 @@ import {
   FiscalityApi,
   fiscalityKey,
   fiscalProfileKey,
+  fiscalPolicyKey,
 } from '../../data-access/fiscality.api';
 import { FiscalConnectionDialogComponent } from './fiscal-connection-dialog.component';
 import { FiscalVerificationDialogComponent } from './fiscal-verification-dialog.component';
@@ -47,6 +51,9 @@ import { environment as deploymentEnvironment } from '../../../../../environment
     MatTooltipModule,
     MatFormFieldModule,
     MatSelectModule,
+    MatInputModule,
+    MatCheckboxModule,
+    ReactiveFormsModule,
     LiassPageHeaderComponent,
     LiassCardComponent,
     LiassButtonComponent,
@@ -64,6 +71,11 @@ export class FiscalityPage {
   readonly environment = signal<'TEST' | 'PRODUCTION'>(deploymentEnvironment.fiscalEnvironment);
   readonly busy = signal(false);
   readonly profileBusy = signal(false);
+  readonly policyBusy = signal(false);
+  readonly policyPoint = new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)] });
+  readonly policyPointId = signal('');
+  readonly policyConnection = new FormControl('', { nonNullable: true, validators: Validators.required });
+  readonly policyEnabled = new FormControl(false, { nonNullable: true });
   readonly selectedRegime = signal<string | null>(null);
   readonly verifying = signal<string | null>(null);
   private readonly verificationCommands = new Map<string, { commandId: string; version: number }>();
@@ -105,6 +117,11 @@ export class FiscalityPage {
   readonly connections = computed(
     () => this.settings.data()?.pages.flatMap((page) => page.connections) ?? [],
   );
+  readonly issuancePolicy = injectQuery(() => {
+    const context = this.context(), point = this.policyPointId();
+    return { queryKey: fiscalPolicyKey(context, point), queryFn: () => this.api.issuancePolicy(context, point),
+      enabled: !!context.org && !!context.user && !!point, retry: false, staleTime: 30_000 };
+  });
   readonly canManage = computed(() => this.settings.data()?.pages[0]?.canManage === true);
   readonly readiness = ['TIMEZONE', 'ESTABLISHMENT'] as const;
   constructor() {
@@ -117,6 +134,34 @@ export class FiscalityPage {
     effect(() => {
       this.selectedRegime.set(this.profile.data()?.selected?.regime ?? null);
     });
+    effect(() => {
+      const policy = this.issuancePolicy.data();
+      if (this.policyPointId()) {
+        this.policyConnection.setValue(policy?.connectionId ?? '');
+        this.policyEnabled.setValue(policy?.enabled ?? false);
+      }
+    });
+  }
+  loadPolicy() {
+    this.policyPoint.markAsTouched();
+    if (this.policyPoint.invalid) return;
+    this.policyPointId.set(this.policyPoint.value.toLowerCase());
+  }
+  async savePolicy() {
+    const context = this.context(), issuancePointId = this.policyPointId();
+    if (!this.canManage() || !issuancePointId || this.policyConnection.invalid || this.policyBusy() || this.issuancePolicy.isPending() || this.issuancePolicy.isError()) return;
+    this.policyBusy.set(true);
+    try {
+      await this.api.saveIssuancePolicy(context, { issuancePointId, connectionId: this.policyConnection.value,
+        environment: this.environment(), enabled: this.policyEnabled.value,
+        expectedVersion: this.issuancePolicy.data()?.version ?? 0 });
+      if (this.api.current(context)) {
+        this.notification.success(this.transloco.translate<string>('FISCALITY.POLICY.SAVED'));
+        await this.client.invalidateQueries({ queryKey: fiscalPolicyKey(context, issuancePointId), exact: true });
+      }
+    } catch (error) {
+      if (this.api.current(context)) this.notification.error(safeMessageFromError(error) ?? this.transloco.translate<string>('FISCALITY.POLICY.ERROR'));
+    } finally { if (this.api.current(context)) this.policyBusy.set(false); }
   }
   async saveProfile() {
     const context = this.context();

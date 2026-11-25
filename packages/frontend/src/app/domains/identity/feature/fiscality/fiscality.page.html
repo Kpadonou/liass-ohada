@@ -61,6 +61,39 @@
       }
     }
   </liass-card>
+  <liass-card [title]="'FISCALITY.POLICY.TITLE' | transloco" [description]="'FISCALITY.POLICY.DESCRIPTION' | transloco">
+    <div class="flex flex-wrap items-start gap-3">
+      <mat-form-field appearance="outline" class="w-full max-w-sm">
+        <mat-label>{{ 'FISCALITY.POLICY.POINT' | transloco }}</mat-label>
+        <input matInput [formControl]="policyPoint" autocomplete="off" />
+        @if (policyPoint.touched && policyPoint.invalid) { <mat-error>{{ 'FISCALITY.POLICY.POINT_ERROR' | transloco }}</mat-error> }
+      </mat-form-field>
+      <liass-button icon="search" variant="outline" (pressed)="loadPolicy()">{{ 'FISCALITY.POLICY.LOAD' | transloco }}</liass-button>
+    </div>
+    @if (policyPointId()) {
+      @if (issuancePolicy.isPending()) { <liass-skeleton [lines]="2" /> }
+      @else if (issuancePolicy.isError()) { <p role="alert" class="text-sm text-danger-600">{{ 'FISCALITY.POLICY.LOAD_ERROR' | transloco }}</p> }
+      @else {
+        <p class="mb-3 text-sm text-app-text-secondary">{{ 'FISCALITY.POLICY.VERSION' | transloco }} {{ issuancePolicy.data()?.version ?? 0 }}</p>
+        <mat-form-field appearance="outline" class="w-full max-w-xl">
+          <mat-label>{{ 'FISCALITY.POLICY.CONNECTION' | transloco }}</mat-label>
+          <mat-select [formControl]="policyConnection">
+            @for (connection of connections(); track connection.connectionId) {
+              <mat-option [value]="connection.connectionId">{{ connection.label }} · {{ connection.environment }}</mat-option>
+            }
+          </mat-select>
+          @if (policyConnection.touched && policyConnection.invalid) { <mat-error>{{ 'FISCALITY.POLICY.CONNECTION_ERROR' | transloco }}</mat-error> }
+        </mat-form-field>
+        <div class="flex flex-wrap items-center gap-3">
+          <mat-checkbox [formControl]="policyEnabled">{{ 'FISCALITY.POLICY.ENABLED' | transloco }}</mat-checkbox>
+          @if (canManage()) {
+            <liass-button icon="save" tone="brand" variant="solid" [loading]="policyBusy()"
+              [disabled]="policyConnection.invalid || policyBusy()" (pressed)="savePolicy()">{{ 'FISCALITY.POLICY.SAVE' | transloco }}</liass-button>
+          }
+        </div>
+      }
+    }
+  </liass-card>
   <liass-card [title]="'FISCALITY.GUIDE.TITLE' | transloco">
     <p class="mb-4 text-sm text-app-text-secondary">
       {{ 'FISCALITY.GUIDE.INTRO' | transloco }}

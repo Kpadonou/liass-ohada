@@ -86,6 +86,22 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
       );
       return { statusCode: 200, body: JSON.stringify({ data }) };
     }
+    if (event.routeKey === "GET /me/organization/fiscality/issuance-policy") {
+      const issuancePointId = event.queryStringParameters?.issuancePointId;
+      const data = await OrganizationFiscalRepository.readIssuancePolicy(
+        orgId, principal.sub, issuancePointId ? { issuancePointId } : {},
+      );
+      return { statusCode: 200, body: JSON.stringify({ data }) };
+    }
+    if (event.routeKey === "PUT /me/organization/fiscality/issuance-policy") {
+      let input: unknown;
+      try { input = JSON.parse(event.body ?? "{}"); }
+      catch { throw new AppError(400, "ERROR_INVALID_INPUT"); }
+      const fields = z.record(z.string(), z.unknown()).parse(input);
+      requireStageEnvironment(principal.stage, fields.environment);
+      const data = await OrganizationFiscalRepository.putIssuancePolicy(orgId, principal.sub, fields);
+      return { statusCode: 200, body: JSON.stringify({ data }) };
+    }
     if (
       event.routeKey ===
       "POST /me/organization/fiscality/connections/{connectionId}/verification"

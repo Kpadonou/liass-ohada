@@ -15,6 +15,8 @@ import {
   OrganizationFiscalProfileSettingsSchema,
   SelectOrganizationFiscalRegimeSchema,
   SelectedOrganizationFiscalProfileSchema,
+  FiscalIssuancePolicySchema,
+  PutFiscalIssuancePolicySchema,
 } from '@liass-ohada/shared/shared';
 import { AuthStore } from './auth.store';
 import { environment } from '../../../../environments/environment';
@@ -28,6 +30,8 @@ export const fiscalityKey = (context: FiscalityContext, environment: string) =>
   ['identity', 'fiscality', context.org, context.user, context.revision, environment] as const;
 export const fiscalProfileKey = (context: FiscalityContext) =>
   ['identity', 'fiscality', context.org, context.user, context.revision, 'profile'] as const;
+export const fiscalPolicyKey = (context: FiscalityContext, issuancePointId: string) =>
+  ['identity', 'fiscality', context.org, context.user, context.revision, 'issuance-policy', issuancePointId] as const;
 @Injectable({ providedIn: 'root' })
 export class FiscalityApi {
   private readonly http = inject(HttpClient);
@@ -72,6 +76,23 @@ export class FiscalityApi {
       .object({ data: SelectedOrganizationFiscalProfileSchema })
       .strict()
       .parse(result).data;
+  }
+  async issuancePolicy(context: FiscalityContext, issuancePointId: string) {
+    this.assert(context);
+    const params = new HttpParams().set('issuancePointId', issuancePointId);
+    const result = await firstValueFrom(this.http.get<unknown>(this.base + '/issuance-policy', { params }).pipe(timeout(35_000)));
+    this.assert(context);
+    return z.object({ data: FiscalIssuancePolicySchema.nullable() }).strict().parse(result).data;
+  }
+  async saveIssuancePolicy(context: FiscalityContext, input: unknown) {
+    this.assert(context);
+    const body = PutFiscalIssuancePolicySchema.parse(input);
+    const result = await firstValueFrom(this.http.put<unknown>(this.base + '/issuance-policy', body).pipe(timeout(35_000)));
+    this.assert(context);
+    const data = z.object({ data: FiscalIssuancePolicySchema }).strict().parse(result).data;
+    if (data.connectionId !== body.connectionId || data.issuancePointId !== body.issuancePointId || data.version !== body.expectedVersion + 1)
+      throw new Error('Fiscal policy response mismatch');
+    return data;
   }
   private assert(context: FiscalityContext) {
     if (!this.current(context))

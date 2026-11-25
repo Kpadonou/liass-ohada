@@ -184,7 +184,22 @@
     "SAVED": "Configuration enregistrée ; vérifications requises.",
     "ERROR": "La configuration fiscale est indisponible. Actualisez puis réessayez.",
     "LOAD_ERROR": "La configuration fiscale n’a pas pu être chargée. Actualisez puis réessayez.",
-    "READ_ONLY": "Vous pouvez consulter la configuration fiscale, mais seuls les propriétaires de l’entreprise peuvent la modifier."
+    "READ_ONLY": "Vous pouvez consulter la configuration fiscale, mais seuls les propriétaires de l’entreprise peuvent la modifier.",
+    "POLICY": {
+      "TITLE": "Politique de fiscalisation",
+      "DESCRIPTION": "Associez un point d’émission à une connexion fiscale vérifiée. Les futures factures utiliseront cette version de politique.",
+      "POINT": "Identifiant du point d’émission",
+      "POINT_ERROR": "Saisissez un identifiant de point d’émission valide.",
+      "LOAD": "Charger",
+      "LOAD_ERROR": "La politique fiscale n’a pas pu être chargée.",
+      "VERSION": "Version",
+      "CONNECTION": "Connexion fiscale",
+      "CONNECTION_ERROR": "Sélectionnez une connexion.",
+      "ENABLED": "Fiscalisation automatique active",
+      "SAVE": "Enregistrer",
+      "SAVED": "Politique fiscale enregistrée.",
+      "ERROR": "La politique fiscale n’a pas pu être enregistrée."
+    }
   },
   "RESTO_SERVICE": {
     "ITEMS": "article(s)",

@@ -2,7 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { FiscalityApi, fiscalityKey, fiscalProfileKey } from './fiscality.api';
+import { FiscalityApi, fiscalityKey, fiscalProfileKey, fiscalPolicyKey } from './fiscality.api';
 import { AuthStore } from './auth.store';
 
 const org = signal('org-a'),
@@ -101,6 +101,24 @@ it('reads and selects only validated platform-governed fiscal regimes', async ()
     api.selectProfile(api.context(), { regime: 'ORDINARY_VAT', taxRateBasisPoints: 0 }),
   ).rejects.toBeDefined();
   http.expectNone((req) => req.url.endsWith('/profile'));
+});
+it('reads and saves a versioned policy for one issuance point', async () => {
+  const point = 'a6320943-0f8f-4bca-8306-3df496124771';
+  const context = api.context();
+  const read = api.issuancePolicy(context, point);
+  const get = http.expectOne((req) => req.url.endsWith('/issuance-policy') && req.params.get('issuancePointId') === point);
+  expect(get.request.method).toBe('GET');
+  get.flush({ data: null });
+  await expect(read).resolves.toBeNull();
+  const body = { issuancePointId: point, environment: 'TEST', connectionId, enabled: true, expectedVersion: 0 };
+  const saved = api.saveIssuancePolicy(context, body);
+  const put = http.expectOne((req) => req.url.endsWith('/issuance-policy') && req.method === 'PUT');
+  expect(put.request.body).toEqual(body);
+  const policy = { issuancePointId: point, environment: 'TEST', connectionId, enabled: true,
+    version: 1, updatedAt: '2026-11-25T00:00:00.000Z', updatedBy: 'owner' };
+  put.flush({ data: policy });
+  await expect(saved).resolves.toEqual(policy);
+  expect(fiscalPolicyKey(context, point)).toContain(point);
 });
 it('rejects oversized token before HTTP', async () => {
   await expect(

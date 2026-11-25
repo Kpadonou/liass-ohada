@@ -96,6 +96,24 @@ test("issuance policy reads are tenant-owned and scoped to the exact issuance po
   await expect(OrganizationFiscalRepository.readIssuancePolicy("org-a", sub, {})).resolves.toBeNull();
   await expect(OrganizationFiscalRepository.readIssuancePolicy("org-b", sub, {})).rejects.toThrow();
 });
+test("owner policy routes expose only the tenant's versioned issuance policy", async () => {
+  const point = command(9);
+  expect((await handler(event())).statusCode).toBe(200);
+  const request = event("GET");
+  request.routeKey = "GET /me/organization/fiscality/issuance-policy";
+  request.queryStringParameters = { issuancePointId: point };
+  const absent = await handler(request);
+  expect(absent.statusCode).toBe(200);
+  expect(parse(absent as { body: string }).data).toBeNull();
+  const save = event("PUT", "", { issuancePointId: point, environment: "TEST", connectionId,
+    enabled: false, expectedVersion: 0 });
+  save.routeKey = "PUT /me/organization/fiscality/issuance-policy";
+  expect((await handler(save)).statusCode).toBe(200);
+  const read = await handler(request);
+  expect(parse(read as { body: string }).data).toMatchObject({ issuancePointId: point, version: 1, enabled: false });
+  const crossTenant = { ...request, headers: { "x-org-id": "org-b" } } as Event;
+  expect((await handler(crossTenant)).statusCode).toBeGreaterThanOrEqual(400);
+});
 test("an issuance policy cannot select a connection from another environment", async () => {
   expect((await handler(event())).statusCode).toBeLessThan(300);
   await expect(OrganizationFiscalRepository.putIssuancePolicy("org-a", sub,
