@@ -69,13 +69,8 @@ test("explicit enablement keeps the gate closed by default and grants only gener
   expect(json).toContain("ssm:GetParameter"); expect(json).toContain("dynamodb:LeadingKeys");
   expect(json).not.toContain("secretsmanager:GetSecretValue");
 });
-test("fiscal stream mapping is disabled and filters only inserted intent keys", () => {
-  const template = synth();
-  template.hasResourceProperties("AWS::DynamoDB::Table", { StreamSpecification: { StreamViewType: "KEYS_ONLY" } });
-  template.hasResourceProperties("AWS::Lambda::EventSourceMapping", {
-    Enabled: false, StartingPosition: "LATEST", FunctionResponseTypes: ["ReportBatchItemFailures"],
-    FilterCriteria: { Filters: [{ Pattern: '{"eventName":["INSERT"],"dynamodb":{"Keys":{"SK":{"S":["FISCAL_INTENT#V1"]}}}}' }] },
-  });
+test("legacy executor does not recreate its retired stream checkpoint", () => {
+  synth().resourceCountIs("AWS::Lambda::EventSourceMapping", 0);
 });
 test("fiscal claim IAM matches Restaurants keys and guards Accounting attempts", () => {
   const resources = synth().toJSON().Resources;

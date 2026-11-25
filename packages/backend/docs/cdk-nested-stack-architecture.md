@@ -319,3 +319,19 @@ authorizer and role must outlive this stack. Any replacement of those dependenci
 requires reviewing and updating these explicit DEV bindings before deployment.
 Deleting this stack removes only its routes, integrations, permissions, functions
 and managed log groups, never fiscal policies or other DynamoDB records.
+
+## Continuous policy-bound DEV TEST consumption
+
+The legacy mapping in FiscalComplianceApiStack is retired by an isolated
+CloudFormation removal. `bin/bound-fiscal-stream.ts` owns the replacement in
+LiassOhadaDevBoundFiscalStream. Initial creation must use
+`-c boundFiscalStreamEnabled=false` and LATEST after the legacy mapping is
+physically deleted. Enable the TEST gate before enabling the new mapping.
+The repository context persists both DEV activation settings. Emergency suspension
+sets restoFiscalTestEnabled=false and boundFiscalStreamEnabled=false; deploy each
+owning stack with those explicit overrides. Never reintroduce the legacy mapping.
+Replacing the new mapping or resuming a suspended checkpoint requires review of
+missed/backlogged records; no historical recovery is authorized by activation.
+The stream/function imports are DEV-specific and cannot route to PRODUCTION.
+Rollback first disables mapping and TEST gate. Do not restore an old checkpoint
+or enable a rollback mapping without a separate replay assessment.

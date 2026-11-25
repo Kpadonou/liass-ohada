@@ -86,16 +86,7 @@ export class RealTestFiscalExecutor extends Construct {
     role.addToPolicy(new iam.PolicyStatement({ actions: ["ssm:GetParameter"],
       resources: [Stack.of(this).formatArn({ service: "ssm", resource: "parameter", resourceName: `${props.stage}/platform/fiscal/*` })] }));
     props.restaurantsTable.grantStreamRead(fn);
-    fn.addEventSource(new DynamoEventSource(props.restaurantsTable, {
-      startingPosition: lambda.StartingPosition.LATEST,
-      batchSize: 10,
-      enabled: false,
-      reportBatchItemFailures: true,
-      filters: [lambda.FilterCriteria.filter({
-        eventName: lambda.FilterRule.isEqual("INSERT"),
-        dynamodb: { Keys: { SK: { S: lambda.FilterRule.isEqual("FISCAL_INTENT#V1") } } },
-      })],
-    }));
+    // Stream consumption is owned by the additive bound-fiscal-stream CDK entry point.
     // No shared role grant, object reader, URL output, or anonymous access.
     this.executionFunction = fn;
   }
