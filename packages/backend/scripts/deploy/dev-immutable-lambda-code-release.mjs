@@ -29,7 +29,7 @@ export const DGI_SFE_SCENARIOS_RELEASE = Object.freeze({
 export const CREDIT_ORIGINAL_RELEASE = Object.freeze({
   ...AUTOMATIC_FISCAL_RELEASE,
   profile: "CREDIT_ORIGINAL_SINGLE_TARGET",
-  commit: "57e45e388a0d4f30864e4b56e3aef8e97715559f",
+  commit: "12cf9174bd50eb539071be6b824a3937c33723ed",
 });
 export const AUTOMATIC_FISCAL_SUBJECT_RELEASE = Object.freeze({
   ...AUTOMATIC_FISCAL_RELEASE,
