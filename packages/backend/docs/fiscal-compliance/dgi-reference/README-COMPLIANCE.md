@@ -81,3 +81,11 @@ calcul partagé 2026 (500/1500/2500 XOF selon tarif, par jour/nuit documenté),
 conservé dans la préparation locale avec exclusion des bases TVA/AIB. Son mapping
 API reste explicitement bloqué; aucun montant commercial n'est réécrit et aucun
 `taxSpecific` n'est généré. La matrice distingue ce progrès local d'une preuve DGI.
+
+Blocage fournisseur supplémentaire vérifié : les confirmations TEST observées
+portent un code formaté de 29 caractères (`TEST-…`), alors que la validation du
+source d'avoir exige actuellement le code original brut de 24 caractères. Ne pas
+retirer les séparateurs ni substituer un numéro commercial sans preuve du format
+attendu par DGI. Le parcours de preuve source et la fiscalisation automatique des
+avoirs restent à compléter; les tests simulés à référence de 24 caractères ne
+prouvent pas l'acceptation de ces originaux TEST réels.
