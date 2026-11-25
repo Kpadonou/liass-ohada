@@ -40,11 +40,30 @@ export const FiscalConnectionIdRequestSchema = z.object({ environment: FiscalEnv
 export const ListFiscalConnectionsRequestSchema = z.object({ environment: FiscalEnvironmentSchema,
   limit: z.coerce.number().int().min(1).max(100).default(50), cursor: text(2000).optional() }).strict();
 export const FiscalConnectionListSchema = z.object({ items: z.array(BeninEMecefConnectionSchema).max(100), nextCursor: text(2000).optional() }).strict();
+/** Explicit 2026 accommodation facts; never infer applicability or nights from
+ * generic invoice quantities. The e-MECeF mapping is deliberately unresolved. */
+export const BeninStayTaxInputSchema = z.object({
+  policy: z.literal("BJ-STAY-TAX-2026"),
+  accommodationTariffXof: minor,
+  daysOrNights: z.number().int().safe().positive(),
+  applicabilityEvidence: text(1000),
+}).strict();
+export const BeninStayTaxComponentSchema = BeninStayTaxInputSchema.extend({
+  kind: z.literal("STAY_TAX"),
+  ratePerDayOrNightXof: z.union([z.literal(500), z.literal(1500), z.literal(2500)]),
+  amountXof: minor,
+  includedInVatBase: z.literal(false),
+  includedInAibBase: z.literal(false),
+  providerMapping: z.literal("REQUIRES_DGI_CLARIFICATION"),
+}).strict();
+export type BeninStayTaxInput = z.infer<typeof BeninStayTaxInputSchema>;
+export type BeninStayTaxComponent = z.infer<typeof BeninStayTaxComponentSchema>;
 export const BeninPreparationInputSchema = z.object({
   connectionId: FiscalIdSchema.optional(), documentType: BeninDocumentTypeSchema.optional(),
   tradeClassification: z.enum(["DOMESTIC", "EXPORT"]).optional(), classificationEvidence: text(1000).optional(),
   lines: z.array(z.object({ sourceLineId: FiscalIdSchema, taxGroup: BeninTaxGroupSchema.optional(),
-    classificationEvidence: text(1000).optional(), taxSpecificMinor: minor.optional() }).strict()).max(100),
+    classificationEvidence: text(1000).optional(), taxSpecificMinor: minor.optional(),
+    stayTax: BeninStayTaxInputSchema.optional() }).strict()).max(100),
   buyerIdentity: z.object({ kind: z.enum(["BJ_IFU", "NO_IFU"]), ifu: text(100).optional(),
     evidence: text(1000).optional() }).strict().refine(v => v.kind === "BJ_IFU" ? !!v.ifu : !v.ifu).optional(),
   operator: z.object({ id: text(100).optional(), name: text(160) }).strict().optional(),
@@ -64,7 +83,7 @@ export const ReviseFiscalCertificationRequestSchema = FiscalSourceRequestSchema.
 export const FiscalReadinessIssueCodeSchema = z.enum(["FISCAL_PROFILE_MISSING", "SELLER_IFU_MISSING", "SELLER_LEGAL_IDENTITY_INCOMPLETE",
   "CONNECTION_MISSING", "CREDENTIAL_REFERENCE_MISSING", "CONNECTION_NIM_MISSING", "FISCAL_CLASSIFICATION_INCOMPLETE",
   "BUYER_FISCAL_IDENTITY_INCOMPLETE", "OPERATOR_INCOMPLETE", "PAYMENT_DECLARATION_INCOMPLETE", "AIB_CLASSIFICATION_INCOMPLETE",
-  "ORIGINAL_FISCAL_CERTIFICATION_REQUIRED", "CURRENCY_PROVIDER_CONFIRMATION_REQUIRED", "PROVIDER_MAPPING_NOT_ENABLED"]);
+  "ORIGINAL_FISCAL_CERTIFICATION_REQUIRED", "STAY_TAX_PROVIDER_MAPPING_REQUIRED", "CURRENCY_PROVIDER_CONFIRMATION_REQUIRED", "PROVIDER_MAPPING_NOT_ENABLED"]);
 export const FiscalLocalReadinessSchema = z.object({ kind: z.literal("LOCAL_READINESS"),
   localInputsComplete: z.boolean(), providerMutationEnabled: z.literal(false),
   issues: z.array(z.object({ code: FiscalReadinessIssueCodeSchema, sourceLineId: FiscalIdSchema.optional() }).strict()).max(120) }).strict();
@@ -74,6 +93,7 @@ export const FiscalPreparationSnapshotSchema = z.object({ schemaVersion: z.liter
   fiscal: BeninPreparationInputSchema,
   originalCertification: z.object({ certificationId: FiscalIdSchema, sourceDocumentId: FiscalIdSchema, version,
     documentType: z.enum(["FV", "EV"]), codeMECeFDGI: text(500), environment: FiscalEnvironmentSchema }).strict().optional(),
+  stayTaxCalculations: z.array(z.object({ sourceLineId: FiscalIdSchema, component: BeninStayTaxComponentSchema }).strict()).max(100).optional(),
   readiness: FiscalLocalReadinessSchema, preparedAt: z.string().datetime(),
 }).strict();
 export const FiscalCertificationSchema = z.object({ id: FiscalIdSchema, country: z.literal("BJ"), provider: z.literal("BENIN_E_MECEF"),

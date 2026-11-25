@@ -72,3 +72,12 @@ Conséquence : le calcul existant de taxe spécifique avec TVA ne doit pas être
 réutilisé aveuglément pour le cas 11. Le mapping fournisseur et le parcours
 applicatif dédiés restent à établir; une simulation wire `taxSpecific` ne les
 valide pas. Aucun agrément DGI ni conformité 20/20 n'est revendiqué.
+
+Décisions Product Owner du 25 novembre 2026 : utiliser provisoirement les
+quantités des feuilles individuelles sans effacer celles du résumé; traiter le
+cas 06 comme un FA lié à une FV réellement confirmée, conserver « remboursement »
+comme ambiguïté à soumettre à DGI. Le cas 11 dispose d'un composant typé et d'un
+calcul partagé 2026 (500/1500/2500 XOF selon tarif, par jour/nuit documenté),
+conservé dans la préparation locale avec exclusion des bases TVA/AIB. Son mapping
+API reste explicitement bloqué; aucun montant commercial n'est réécrit et aucun
+`taxSpecific` n'est généré. La matrice distingue ce progrès local d'une preuve DGI.

@@ -239,3 +239,32 @@ test.each([
   expect((await FiscalService.readiness("org-1", { ...credit, environment: "PRODUCTION" })).issues).toContainEqual({ code: "ORIGINAL_FISCAL_CERTIFICATION_REQUIRED" });
   await expect(FiscalService.readiness("org-1", { ...credit, preparation: { lines: [], documentType: incompatibleType } })).rejects.toMatchObject({ messageCode: "FISCAL_CLASSIFICATION_INVALID" });
 });
+
+test("case 11 typed stay tax is frozen for local validation while provider mapping remains blocked", async () => {
+  const issued = { ...source(), currency: "XOF" as const };
+  jest.mocked(SalesFiscalSourceService.getIssuedDocument).mockResolvedValue(issued);
+  const input = request();
+  const stayTax = { policy: "BJ-STAY-TAX-2026" as const, accommodationTariffXof: "20000",
+    daysOrNights: 2, applicabilityEvidence: "Documented accommodation stay" };
+  input.preparation.lines = [{ sourceLineId: "line-1", taxGroup: "B", stayTax }];
+  const result = await FiscalService.prepare("org-1", "user-1", input);
+  expect(result.preparationSnapshot.stayTaxCalculations).toEqual([{ sourceLineId: "line-1", component: {
+    ...stayTax, kind: "STAY_TAX", ratePerDayOrNightXof: 500, amountXof: "1000",
+    includedInVatBase: false, includedInAibBase: false, providerMapping: "REQUIRES_DGI_CLARIFICATION",
+  } }]);
+  expect(result.preparationSnapshot.readiness.providerMutationEnabled).toBe(false);
+  expect(result.preparationSnapshot.readiness.issues).toContainEqual({ code: "STAY_TAX_PROVIDER_MAPPING_REQUIRED", sourceLineId: "line-1" });
+  expect(result.preparationSnapshot.source).toEqual(issued);
+  expect(result.preparationSnapshot.fiscal.lines[0].taxSpecificMinor).toBeUndefined();
+  expect(await FiscalService.prepare("org-1", "user-1", input)).toEqual(result);
+  expect((await FiscalService.getCertification("org-1", identity(input))).preparationSnapshot.stayTaxCalculations)
+    .toEqual(result.preparationSnapshot.stayTaxCalculations);
+});
+test("stay-tax XOF components cannot be attached to non-XOF commercial facts", async () => {
+  const input = request();
+  input.preparation.lines = [{ sourceLineId: "line-1", stayTax: {
+    policy: "BJ-STAY-TAX-2026", accommodationTariffXof: "20000", daysOrNights: 2, applicabilityEvidence: "Accommodation",
+  } }];
+  await expect(FiscalService.prepare("org-1", "user-1", input)).rejects.toMatchObject({ messageCode: "FISCAL_CLASSIFICATION_INVALID" });
+  expect(aws.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+});

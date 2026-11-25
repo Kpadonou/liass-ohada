@@ -1,3 +1,4 @@
+import { calculateBeninStayTax } from "../providers/benin-emecef/benin-stay-tax";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
@@ -195,12 +196,17 @@ export class FiscalService {
     if (!fiscal.paymentDeclaration) issue("PAYMENT_DECLARATION_INCOMPLETE");
     if (!fiscal.aib) issue("AIB_CLASSIFICATION_INCOMPLETE");
     if (source.sourceDocumentType === "CREDIT_NOTE" && !originalCertification) issue("ORIGINAL_FISCAL_CERTIFICATION_REQUIRED");
+    const stayTaxCalculations = fiscal.lines.filter(line => line.stayTax).map(line => {
+      if (source.currency !== "XOF") throw new AppError(400, "FISCAL_CLASSIFICATION_INVALID");
+      return { sourceLineId: line.sourceLineId, component: calculateBeninStayTax(line.stayTax!) };
+    });
     const localInputsComplete = issues.length === 0;
+    for (const calculation of stayTaxCalculations) issue("STAY_TAX_PROVIDER_MAPPING_REQUIRED", calculation.sourceLineId);
     issue("CURRENCY_PROVIDER_CONFIRMATION_REQUIRED"); issue("PROVIDER_MAPPING_NOT_ENABLED");
     const readiness = FiscalLocalReadinessSchema.parse({ kind: "LOCAL_READINESS", localInputsComplete, providerMutationEnabled: false, issues });
     const snapshot = FiscalPreparationSnapshotSchema.parse({ schemaVersion: 1, integrationVersion: "S4B-1", environment: request.environment,
       source, seller: profile ?? null, connection: connection ? publicConnection(connection) : null, fiscal,
-      originalCertification, readiness, preparedAt: new Date().toISOString() });
+      originalCertification, ...(stayTaxCalculations.length ? { stayTaxCalculations } : {}), readiness, preparedAt: new Date().toISOString() });
     return { snapshot, credentialAlias: connection?.credentialAlias };
   }
 }
