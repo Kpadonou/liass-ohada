@@ -299,7 +299,7 @@ test("scenario 06 fiscal source binds the original confirmed FV code without cha
   jest.spyOn(RestaurantInvoiceSourceVerifier, "verify").mockResolvedValue({ verified: true,
     evidence: { invoice: { digest: note.data.sourceReceiptDigest, currency: "XOF", dueMinor: 554 },
       proof: { digest: "a".repeat(64) }, lines: originalLines } } as never);
-  const originalState = { status: "CONFIRMED", execution: "REAL_TEST",
+  const originalState = { identity: { orgId: scope.orgId, sourceDomain: "restaurants", sourceDocumentId: billId, sourceDocumentType: "INVOICE", environment: "TEST" }, status: "CONFIRMED", execution: "REAL_TEST",
     securityEvidenceOrigin: "DGI_TEST", sourceDigest: "a".repeat(64),
     fiscalDocumentType: "FV", obligationId: "b".repeat(64),
     security: { codeMECeFDGI: "A".repeat(24) } };
