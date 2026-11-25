@@ -227,14 +227,18 @@ export function restaurantBeninRealTestWorkflow(
       }
     },
     getInvoice: (uid) => adapter.getInvoice(input, uid),
-    async verifyInvoice(uid, prepared) {
+    async verifyInvoice(uid, prepared, purpose) {
       if (prepared.sourceDigest !== config.sourceDigest)
         throw new Error("FISCAL_REAL_RESERVATION_REQUIRED");
       await verifyContext();
       const pending = z.object({ invoice: InvoiceRequestDataDtoSchema,
         expected: z.object({ total: integer, itemTotals: z.array(integer) }).strict() }).strict().parse(prepared.payload);
       try {
-        return await adapter.verifyPendingDurableInvoice(input, uid, pending.invoice, pending.expected);
+        // Confirmation reconciles the exact reserved UID and immutable details.
+        // Global pending-list membership is required only for cancellation.
+        return purpose === "CANCEL"
+          ? await adapter.verifyPendingDurableInvoice(input, uid, pending.invoice, pending.expected)
+          : await adapter.verifyDurableInvoice(input, uid, pending.invoice, pending.expected);
       } catch (error) {
         // Allowlisted metadata only: never log the response, message, token or request.
         const failure = error instanceof BeninEMecefConnectorError ? error : undefined;

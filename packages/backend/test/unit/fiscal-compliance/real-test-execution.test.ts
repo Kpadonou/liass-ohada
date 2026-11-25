@@ -536,7 +536,7 @@ test("authorized reconciliation verifies the owned pending UID without changing 
   expect(transport.mock.calls.filter(([r]) => r.method === "GET" &&
     r.url.includes("/api/invoice/provider-uid"))).toHaveLength(1);
   expect(transport.mock.calls.filter(([r]) => r.method === "GET" &&
-    r.url.endsWith("/api/invoice"))).toHaveLength(1);
+    r.url.endsWith("/api/invoice"))).toHaveLength(0);
   expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(0);
 });
 test("reconciliation rejects mismatched provider details and wrong ownership without mutation", async () => {
@@ -559,7 +559,7 @@ test("provider GET failure leaves the attempt unchanged and cannot unlock cancel
   const { flow, transport } = setup();
   await create(flow);
   transport.mockImplementation(async (request) => {
-    if (request.url.endsWith("/api/invoice"))
+    if (request.url.includes("/api/invoice/"))
       return { status: 503, body: "{}" };
     return { status: 200, body: JSON.stringify({ status: true, ifu: config.ifu, nim: config.nim }) };
   });

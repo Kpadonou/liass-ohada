@@ -40,7 +40,7 @@ export interface MockFiscalProvider {
     preparation?: VerifiedFiscalPreparation,
   ): Promise<Security>;
   getInvoice(uid: string): Promise<unknown>;
-  verifyInvoice?(uid: string, preparation: VerifiedFiscalPreparation): Promise<unknown>;
+  verifyInvoice?(uid: string, preparation: VerifiedFiscalPreparation, purpose?: "CANCEL"): Promise<unknown>;
   cancelInvoice?(uid: string, reservation: FiscalAttemptState): Promise<Security>;
 }
 export class DefiniteFiscalRejection extends Error {}
@@ -255,7 +255,7 @@ export class SyntheticFiscalOrchestrator {
     if (prepared.sourceDigest !== state.sourceDigest ||
       prepared.requestDigest !== state.requestDigest || prepared.total !== state.expectedTotal)
       throw new FiscalAttemptConflict("SCOPE_DENIED");
-    await this.provider.verifyInvoice(state.uid, prepared);
+    await this.provider.verifyInvoice(state.uid, prepared, "CANCEL");
     const reference = createHash("sha256").update(JSON.stringify([
       state.obligationId, state.attemptId, commandId, state.uid, "CANCEL",
     ])).digest("hex");
