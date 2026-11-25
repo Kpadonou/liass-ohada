@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { configurationFingerprint, DGI_STAY_TAX_LOCAL_RELEASE, DGI_SFE_SCENARIOS_RELEASE, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, FISCAL_RECEIPT_STATUS_RELEASE, RESTAURANTS_RECEIPT_READ_RELEASE, FISCAL_STATUS_GATE_OFF_RELEASE, FISCAL_GET_EXTENSION_RELEASE, FISCAL_ADDRESS_ATTESTATION_RELEASE, FISCAL_OPTIONAL_FIELDS_RELEASE, ORGANIZATION_PROFILE_RELEASE, RESTAURANTS_ATTESTED_FISCAL_RELEASE, UNIFIED_FISCAL_BINDING_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
+import { configurationFingerprint, CREDIT_ORIGINAL_RELEASE, DGI_STAY_TAX_LOCAL_RELEASE, DGI_SFE_SCENARIOS_RELEASE, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, FISCAL_RECEIPT_STATUS_RELEASE, RESTAURANTS_RECEIPT_READ_RELEASE, FISCAL_STATUS_GATE_OFF_RELEASE, FISCAL_GET_EXTENSION_RELEASE, FISCAL_ADDRESS_ATTESTATION_RELEASE, FISCAL_OPTIONAL_FIELDS_RELEASE, ORGANIZATION_PROFILE_RELEASE, RESTAURANTS_ATTESTED_FISCAL_RELEASE, UNIFIED_FISCAL_BINDING_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
 
 const target = { account: "570197775998", region: "eu-west-3", stage: "dev" };
 const entry = (name, bytes) => ({ functionName: name, logicalId: "L", artifact: `artifacts/${name}.zip`, sha256Hex: "", codeSha256: "", liveCodeSha256: "old", liveLastModified: "2026-11-11T00:00:00.000+0000" });
@@ -238,5 +238,19 @@ test("stay-tax release contains only the four local preparation consumers", () =
     commit: DGI_STAY_TAX_LOCAL_RELEASE.commit, artifacts };
   assert.equal(validateReleaseManifest(manifest, directory).length, 4);
   artifacts[0].functionName = "liass-ohada-dev-fiscal-compliance-real-test";
+  assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
+});
+
+test("credit original release pins one existing executor and source commit", () => {
+  const { directory } = fixture();
+  const bytes = Buffer.from("credit-original"), hashes = awaitableHash(bytes);
+  const item = { ...entry(CREDIT_ORIGINAL_RELEASE.functionName, bytes), logicalId: CREDIT_ORIGINAL_RELEASE.logicalId,
+    sha256Hex: hashes.hex, codeSha256: hashes.base64 };
+  writeFileSync(join(directory, item.artifact), bytes);
+  const manifest = { mode: "PREPARE_ONLY", deploymentExecuted: false,
+    releaseProfile: CREDIT_ORIGINAL_RELEASE.profile, target, commit: CREDIT_ORIGINAL_RELEASE.commit, artifacts: [item] };
+  assert.equal(validateReleaseManifest(manifest, directory).length, 1);
+  assert.throws(() => validateReleaseManifest({ ...manifest, commit: "other" }, directory), /commit/);
+  item.functionName = "liass-ohada-dev-accounting-post-entry";
   assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
 });
