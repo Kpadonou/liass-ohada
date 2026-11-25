@@ -2041,6 +2041,8 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
     if (!provenance.verified) throw new Error("provenance missing");
     expect(provenance.evidence.evidenceOrigin).toBe("AUTHENTIC");
     expect(provenance.evidence.fiscalBinding).toEqual(binding);
+    const reopened = await Receipt.read(scope(), "owner", v.sessionId, {});
+    expect(reopened.data.receiptId).toBe(invoice.receiptId);
     expect(provenance.evidence.issuedAt).toBe(invoice.issuedAt);
     expect(provenance.evidence.commercialRootDigest).toBe(invoice.digest);
     expect(verified.evidence.parts.map(({ content }) => content.kind)).toEqual([
