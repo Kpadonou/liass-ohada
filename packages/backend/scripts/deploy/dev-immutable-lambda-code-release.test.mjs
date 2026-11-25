@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { configurationFingerprint, CREDIT_ORIGINAL_RELEASE, DGI_STAY_TAX_LOCAL_RELEASE, DGI_SFE_SCENARIOS_RELEASE, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, FISCAL_RECEIPT_STATUS_RELEASE, RESTAURANTS_RECEIPT_READ_RELEASE, FISCAL_STATUS_GATE_OFF_RELEASE, FISCAL_GET_EXTENSION_RELEASE, FISCAL_ADDRESS_ATTESTATION_RELEASE, FISCAL_OPTIONAL_FIELDS_RELEASE, ORGANIZATION_PROFILE_RELEASE, RESTAURANTS_ATTESTED_FISCAL_RELEASE, UNIFIED_FISCAL_BINDING_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
+import { configurationFingerprint, CREDIT_WORKFLOW_RELEASE, CREDIT_ORIGINAL_RELEASE, DGI_STAY_TAX_LOCAL_RELEASE, DGI_SFE_SCENARIOS_RELEASE, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, FISCAL_RECEIPT_STATUS_RELEASE, RESTAURANTS_RECEIPT_READ_RELEASE, FISCAL_STATUS_GATE_OFF_RELEASE, FISCAL_GET_EXTENSION_RELEASE, FISCAL_ADDRESS_ATTESTATION_RELEASE, FISCAL_OPTIONAL_FIELDS_RELEASE, ORGANIZATION_PROFILE_RELEASE, RESTAURANTS_ATTESTED_FISCAL_RELEASE, UNIFIED_FISCAL_BINDING_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
 
 const target = { account: "570197775998", region: "eu-west-3", stage: "dev" };
 const entry = (name, bytes) => ({ functionName: name, logicalId: "L", artifact: `artifacts/${name}.zip`, sha256Hex: "", codeSha256: "", liveCodeSha256: "old", liveLastModified: "2026-11-11T00:00:00.000+0000" });
@@ -252,5 +252,19 @@ test("credit original release pins one existing executor and source commit", () 
   assert.equal(validateReleaseManifest(manifest, directory).length, 1);
   assert.throws(() => validateReleaseManifest({ ...manifest, commit: "other" }, directory), /commit/);
   item.functionName = "liass-ohada-dev-accounting-post-entry";
+  assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
+});
+
+test("credit workflow release pins only its producer and TEST consumer", () => {
+  const { directory } = fixture();
+  const artifacts = CREDIT_WORKFLOW_RELEASE.functions.map(target => {
+    const bytes = Buffer.from(target.functionName), hashes = awaitableHash(bytes);
+    writeFileSync(join(directory, "artifacts", `${target.functionName}.zip`), bytes);
+    return { ...entry(target.functionName, bytes), logicalId: target.logicalId, sha256Hex: hashes.hex, codeSha256: hashes.base64 };
+  });
+  const manifest = { mode: "PREPARE_ONLY", deploymentExecuted: false, releaseProfile: CREDIT_WORKFLOW_RELEASE.profile,
+    target, commit: CREDIT_WORKFLOW_RELEASE.commit, artifacts };
+  assert.equal(validateReleaseManifest(manifest, directory).length, 2);
+  artifacts[0].functionName = "liass-ohada-prod-fiscal-compliance-real-test";
   assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
 });
