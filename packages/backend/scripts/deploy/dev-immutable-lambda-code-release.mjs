@@ -163,7 +163,8 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
   assert.equal(manifest?.target?.region, DEV_REGION, "Release is not for DEV region");
   assert.equal(manifest?.target?.stage, DEV_STAGE, "Release is not for DEV stage");
   const fiscalExecutor = manifest?.releaseProfile === FISCAL_EXECUTOR_RELEASE.profile;
-  const fiscalReceiptStatus = manifest?.releaseProfile === FISCAL_RECEIPT_STATUS_RELEASE.profile;
+  const fiscalReceiptStatus = manifest?.releaseProfile === FISCAL_RECEIPT_STATUS_RELEASE.profile ||
+    manifest?.releaseProfile === "FISCAL_CONFIRMED_RECEIPT_SINGLE_TARGET";
   const receiptRead = manifest?.releaseProfile === RESTAURANTS_RECEIPT_READ_RELEASE.profile;
   const fiscalGateOffRead = manifest?.releaseProfile === FISCAL_STATUS_GATE_OFF_RELEASE.profile;
   const finalPublisher = manifest?.releaseProfile === FINAL_PUBLISHER_RELEASE.profile;
@@ -177,7 +178,8 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
     : fiscalGetExtension ? FISCAL_GET_EXTENSION_RELEASE
     : fiscalAddressAttestation ? FISCAL_ADDRESS_ATTESTATION_RELEASE : undefined;
   const fixedRelease = multiTarget ?? singleTarget;
-  const expectedCommit = fixedRelease?.commit ?? "a4f5b225b4fce4424a85b1ea18ff96b03c97207e";
+  const expectedCommit = manifest?.releaseProfile === "FISCAL_CONFIRMED_RECEIPT_SINGLE_TARGET"
+    ? "32453dc9a792a4ecf79682db72b75382d2bbbb40" : fixedRelease?.commit ?? "a4f5b225b4fce4424a85b1ea18ff96b03c97207e";
   const expectedArtifacts = multiTarget ? multiTarget.functions.length : singleTarget ? 1 : 77;
   assert.equal(manifest?.commit, expectedCommit, "Release commit is not approved");
   const artifacts = finalPublisher && manifest.artifact ? [{
