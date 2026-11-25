@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { configurationFingerprint, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, FISCAL_RECEIPT_STATUS_RELEASE, RESTAURANTS_RECEIPT_READ_RELEASE, FISCAL_STATUS_GATE_OFF_RELEASE, FISCAL_GET_EXTENSION_RELEASE, FISCAL_ADDRESS_ATTESTATION_RELEASE, FISCAL_OPTIONAL_FIELDS_RELEASE, ORGANIZATION_PROFILE_RELEASE, RESTAURANTS_ATTESTED_FISCAL_RELEASE, UNIFIED_FISCAL_BINDING_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
+import { configurationFingerprint, DGI_SFE_SCENARIOS_RELEASE, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, FISCAL_RECEIPT_STATUS_RELEASE, RESTAURANTS_RECEIPT_READ_RELEASE, FISCAL_STATUS_GATE_OFF_RELEASE, FISCAL_GET_EXTENSION_RELEASE, FISCAL_ADDRESS_ATTESTATION_RELEASE, FISCAL_OPTIONAL_FIELDS_RELEASE, ORGANIZATION_PROFILE_RELEASE, RESTAURANTS_ATTESTED_FISCAL_RELEASE, UNIFIED_FISCAL_BINDING_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
 
 const target = { account: "570197775998", region: "eu-west-3", stage: "dev" };
 const entry = (name, bytes) => ({ functionName: name, logicalId: "L", artifact: `artifacts/${name}.zip`, sha256Hex: "", codeSha256: "", liveCodeSha256: "old", liveLastModified: "2026-11-11T00:00:00.000+0000" });
@@ -207,4 +207,20 @@ test("the rollback procedure is documented for retained partial execution eviden
   const source = String(process.getBuiltinModule("node:fs").readFileSync(new URL("./dev-immutable-lambda-code-release.mjs", import.meta.url)));
   assert.match(source, /Rollback requires retained execution evidence/);
   assert.doesNotMatch(source, /Rollback requires a completed execution record/);
+});
+
+test("DGI scenario increment is pinned to its commit and single existing TEST executor", () => {
+  const { directory } = fixture();
+  const bytes = Buffer.from("dgi-sfe-scenarios"), hashes = awaitableHash(bytes);
+  const item = { ...entry(DGI_SFE_SCENARIOS_RELEASE.functionName, bytes),
+    logicalId: DGI_SFE_SCENARIOS_RELEASE.logicalId, sha256Hex: hashes.hex, codeSha256: hashes.base64 };
+  writeFileSync(join(directory, item.artifact), bytes);
+  const manifest = { mode: "PREPARE_ONLY", deploymentExecuted: false,
+    releaseProfile: DGI_SFE_SCENARIOS_RELEASE.profile, target,
+    commit: DGI_SFE_SCENARIOS_RELEASE.commit, artifacts: [item] };
+  assert.equal(validateReleaseManifest(manifest, directory).length, 1);
+  assert.throws(() => validateReleaseManifest({ ...manifest, commit: "unreviewed" }, directory), /commit/);
+  assert.throws(() => validateReleaseManifest({ ...manifest, target: { ...target, stage: "prod" } }, directory), /DEV stage/);
+  item.functionName = "liass-ohada-dev-restaurants-publish-receipt";
+  assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
 });
