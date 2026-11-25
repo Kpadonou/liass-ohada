@@ -1,3 +1,4 @@
+import { assertCreditProviderExecutionEnabled } from "../fiscal-compliance/core/credit-workflow";
 import { originalCreditWireReference, confirmedCreditOriginal } from "../fiscal-compliance/core/credit-original";
 import { createHash } from "node:crypto";
 import { clean } from "@/lambda/shared/authority/integrity";
@@ -25,6 +26,9 @@ export async function prepareRestaurantBeninCredit(input: {
   classifications: unknown;
   mapping: unknown;
 }): Promise<VerifiedFiscalPreparation> {
+  // No deployed FA/EA CREATE until the wire sign/reference contract is proven.
+  // Local simulated tests may exercise the candidate mapper without enabling it.
+  assertCreditProviderExecutionEnabled();
   const { principal, identity } = input;
   if (identity.orgId !== principal.orgId || identity.sourceDomain !== "restaurants" ||
     identity.sourceDocumentType !== "CREDIT_NOTE" || identity.environment !== "TEST" ||

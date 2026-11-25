@@ -1,3 +1,4 @@
+import { receiptSummary } from '../data-access/restaurant-receipt.test-fixture';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { RestaurantCreditNoteDocument } from './restaurant-credit-note-document.component';
@@ -41,4 +42,27 @@ it('renders a confirmed linked FA with original code, own security and printable
   expect(nativePrint).toHaveBeenCalledTimes(2);
   vi.restoreAllMocks();
   TestBed.resetTestingModule();
+});
+
+describe('Signed credit receipt presentation', () => {
+  afterEach(() => TestBed.resetTestingModule());
+  it('renders signed values, tax summary and print reference without fabricating security', async () => {
+    TestBed.configureTestingModule({ imports: [RestaurantCreditNoteDocument,
+      TranslocoTestingModule.forRoot({ langs: { fr }, translocoConfig: { availableLangs: ['fr'], defaultLang: 'fr' } })] });
+    const fixture = TestBed.createComponent(RestaurantCreditNoteDocument);
+    fixture.componentRef.setInput('summary', { ...receiptSummary(), currency: 'XOF' });
+    fixture.componentRef.setInput('credit', { data: { creditNoteReference: 'AV-20261125-12345678', amountMinor: 14500,
+      reason: 'Correction', validatedAt: '2026-11-25T10:00:00.000Z' }, lines: [
+      { creditNoteLineId: 'a', creditedQuantity: 2, label: 'Exonéré', creditedAmountMinor: 10000 },
+      { creditNoteLineId: 'b', creditedQuantity: 3, label: 'Taxable', creditedAmountMinor: 4500 }] });
+    fixture.componentRef.setInput('fiscal', { status: 'NOT_STARTED', originalPrintedReference: 'ED04999905 - 1378',
+      creditPreparation: { status: 'BLOCKED', reason: 'PROVIDER_CREDIT_WIRE_SEMANTICS_UNVERIFIED', providerMutationAllowed: false },
+      creditTaxSummary: [{ taxGroup: 'B', netMinor: -3814, taxMinor: -686, totalMinor: -4500 }], securityElements: null });
+    fixture.detectChanges(); await fixture.whenStable(); fixture.detectChanges();
+    const text = fixture.nativeElement.textContent.replace(/[\s\u00a0\u202f]/g, '');
+    expect(text).toContain('-14500'); expect(text).toContain('-2×'); expect(text).toContain('-3×');
+    expect(text).toContain('-3814'); expect(text).toContain('-686');
+    expect(text).toContain('ED04999905-1378');
+    expect(fixture.nativeElement.querySelector('img')).toBeNull();
+  });
 });

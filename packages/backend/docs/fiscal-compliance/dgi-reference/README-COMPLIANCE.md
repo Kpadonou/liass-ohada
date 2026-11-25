@@ -110,3 +110,38 @@ explicitement. Les limites commerciales/cumulatives et déduplications existante
 ne changent pas. La projection signée partagée est testée; son raccordement au
 rendu applicatif et le parcours d'autorisation/automatisation des avoirs restent
 à terminer. Cas06/18/20 sans acceptation DGI réelle.
+
+### Workflow applicatif d'avoir — incrément du 25 novembre 2026
+
+Fiscal Compliance possède l'admission réutilisable (`core/credit-workflow.ts`) et
+le blocage explicite de toute émission FA/EA déployée tant que signes/référence
+wire ne sont pas établis. Restaurants conserve les limites cumulées, les lignes,
+les autorisations commerciales et l'idempotence de création. Aucun autre domaine
+n'écrit dans ses contrôles internes.
+
+Un nouvel avoir validé dont la facture originale porte une provenance AUTHENTIC
+et un binding fiscal reçoit, dans sa transaction commerciale, une intention sous
+`KeyFactory.restaurantCreditNotePK(orgId,outletId,creditNoteId)` et le SK existant
+`KeyFactory.restaurantFiscalIntentSK()`. Aucun nouveau format de clé, index,
+ressource AWS ou déplacement de données. Le consommateur Stream INSERT existant
+lit fortement cette intention, vérifie le source authentique, le binding exact,
+la confirmation DGI_TEST de l'original et les limites commerciales, puis conserve
+la preuve originale et le digest du source avec un état BLOCKED et la raison
+`PROVIDER_CREDIT_WIRE_SEMANTICS_UNVERIFIED`. La transition conditionnelle PENDING
+protège les livraisons concurrentes; les erreurs de lecture transitoires sont
+réessayées par Stream; elles ne deviennent jamais une permission CREATE.
+
+L'endpoint applicatif existant de préparation accepte `creditNoteId` pour lire
+cette autorisation bornée, vérifier FA/EA et les groupes du scénario, et retourner
+un résultat typé bloqué. Il n'accorde aucune autorisation à un ancien avoir sans
+intention et ne rejoue aucune tentative. Le résultat fiscal expose séparément le
+code original authentique et la référence imprimée NIM/compteur, le statut de
+préparation, les bases/TVA/TTC signés. Le composant de document existant rend les
+quantités et montants négatifs, conserve le client et ne reçoit de sécurité/QR
+que de la confirmation propre à l'avoir. Le retrait de séparateurs reste interdit.
+
+Cas06/18/20 : workflow local/durable et présentation implémentés et testés avec
+preuves simulées; aucune nouvelle transaction DGI, aucun VISA ni acceptation.
+L'activation réelle du mapping reste un chantier distinct exigeant une preuve
+fournisseur. L'admission partagée peut être réutilisée par un autre consommateur;
+aucune intégration Sales fictive n'est revendiquée dans cet incrément.

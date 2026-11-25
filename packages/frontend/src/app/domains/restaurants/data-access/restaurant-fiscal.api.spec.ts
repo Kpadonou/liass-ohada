@@ -21,6 +21,15 @@ describe('Fiscal result transport', () => {
     TestBed.inject(HttpTestingController).verify();
     TestBed.resetTestingModule();
   });
+  it('prepares a bound credit without dispatching a provider command', async () => {
+    const pending = TestBed.inject(RestaurantFiscalApi).prepareCreditAuthorization(ctx, rid(3), rid(4), '06', rid(5));
+    const request = TestBed.inject(HttpTestingController).expectOne(r => r.url.endsWith('/fiscal/test-authorization-preparations'));
+    expect(request.request.body).toEqual({ creditNoteId: rid(4), scenarioId: '06', commandId: rid(5) });
+    request.flush({ creditNoteId: rid(4), invoiceId: rid(3), environment: 'TEST', status: 'BLOCKED',
+      reason: 'PROVIDER_CREDIT_WIRE_SEMANTICS_UNVERIFIED', providerMutationAllowed: false,
+      originalFiscalReference: 'TEST-PRXJ-LKWL-HYMQ-PXGO-MH5Z', originalPrintedReference: 'TS01002103 - 174' });
+    expect((await pending).providerMutationAllowed).toBe(false);
+  });
   it('reads only the scoped result and validates the invoice identity', async () => {
     const promise = TestBed.inject(RestaurantFiscalApi).result(ctx, rid(3));
     const request = TestBed.inject(HttpTestingController).expectOne((r) =>

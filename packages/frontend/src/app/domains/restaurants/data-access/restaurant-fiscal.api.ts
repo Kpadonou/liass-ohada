@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, timeout } from 'rxjs';
-import { RestaurantFiscalResultResponseSchema, RestaurantFiscalStatusResponseSchema } from '@liass-ohada/shared/restaurants';
+import { RestaurantCreditFiscalAuthorizationResponseSchema, RestaurantFiscalResultResponseSchema, RestaurantFiscalStatusResponseSchema } from '@liass-ohada/shared/restaurants';
 import { RestaurantOrdersApi, ServiceOrderContext } from './restaurant-orders.api';
 import { environment } from '../../../../environments/environment';
 @Injectable({ providedIn: 'root' })
@@ -12,6 +12,15 @@ export class RestaurantFiscalApi {
     this.context.assertContext(ctx);
     return environment.apiBaseUrl.replace(/\/$/, '') +
       `/restaurants/outlets/${ctx.outlet}/sessions/${ctx.session}/invoices/${invoiceId}/fiscal`;
+  }
+  async prepareCreditAuthorization(ctx: ServiceOrderContext, invoiceId: string, creditNoteId: string,
+    scenarioId: '06' | '18' | '20', commandId: string) {
+    const value = RestaurantCreditFiscalAuthorizationResponseSchema.parse(await firstValueFrom(
+      this.http.post<unknown>(this.creditPath(ctx, invoiceId, creditNoteId) + '/test-authorization-preparations',
+        { creditNoteId, scenarioId, commandId }).pipe(timeout(35000))));
+    this.context.assertContext(ctx);
+    if (value.invoiceId !== invoiceId || value.creditNoteId !== creditNoteId) throw new Error('Fiscal credit note mismatch');
+    return value;
   }
   async creditResult(ctx: ServiceOrderContext, invoiceId: string, creditNoteId: string) {
     const value = RestaurantFiscalResultResponseSchema.parse(await firstValueFrom(

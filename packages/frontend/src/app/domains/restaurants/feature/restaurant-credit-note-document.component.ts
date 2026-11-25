@@ -26,7 +26,7 @@ import { restaurantPrice } from '../utils/restaurant-money';
       <p class="break-words text-sm font-semibold">{{ summary().restaurantName }} · {{ summary().outletName }}</p>
       <h2 class="text-xl font-semibold">{{ 'RESTAURANTS_CORRECTIONS.DETAIL' | transloco }}</h2>
       <p class="break-all font-medium">{{ credit().data.creditNoteReference }}</p>
-      <p class="text-2xl font-semibold tabular-nums">{{ money(credit().data.amountMinor) }}</p>
+      <p class="text-2xl font-semibold tabular-nums">{{ money(-credit().data.amountMinor) }}</p>
       <liass-status-chip tone="neutral" [label]="'RESTAURANTS_CORRECTIONS.VALIDATED' | transloco" />
       <p class="text-sm text-app-text-secondary">{{ date(credit().data.validatedAt) }} · {{ summary().tableName }}</p>
       @if (summary().customer; as customer) {
@@ -41,8 +41,8 @@ import { restaurantPrice } from '../utils/restaurant-money';
       <h3 class="font-semibold">{{ 'RESTAURANTS_CORRECTIONS.LINES' | transloco }}</h3>
       @for (line of credit().lines; track line.creditNoteLineId) {
         <div class="flex justify-between gap-3 border-b border-app-border py-2 text-sm">
-          <span class="break-words">{{ line.creditedQuantity }} × {{ line.label }}</span>
-          <span class="shrink-0 tabular-nums">{{ money(line.creditedAmountMinor) }}</span>
+          <span class="break-words">{{ -line.creditedQuantity }} × {{ line.label }}</span>
+          <span class="shrink-0 tabular-nums">{{ money(-line.creditedAmountMinor) }}</span>
         </div>
       }
     </section>
@@ -51,8 +51,20 @@ import { restaurantPrice } from '../utils/restaurant-money';
         <h3 class="font-semibold">{{ 'RESTAURANTS.RECEIPT.FISCAL_TEST' | transloco }}</h3>
         <liass-status-chip size="sm" [tone]="result.status === 'CONFIRMED' ? 'success' : 'neutral'"
           [label]="'RESTAURANTS.RECEIPT.FISCAL_STATUS.' + result.status | transloco" />
-        @if (result.originalFiscalReference) {
-          <p class="break-all text-xs">{{ 'RESTAURANTS_CORRECTIONS.ORIGINAL_DGI' | transloco }} : {{ result.originalFiscalReference }}</p>
+        @if (result.creditPreparation?.status === 'BLOCKED') {
+          <p class="text-sm text-app-text-secondary">{{ 'RESTAURANTS_CORRECTIONS.FISCAL_BLOCKED' | transloco }}</p>
+        }
+        @if (result.creditTaxSummary; as groups) {
+          @for (group of groups; track group.taxGroup) {
+            <dl class="grid gap-1 text-xs tabular-nums sm:grid-cols-3">
+              <div><dt>{{ 'RESTAURANTS_CORRECTIONS.CREDIT_NET' | transloco }} [{{ group.taxGroup }}]</dt><dd>{{ money(group.netMinor) }}</dd></div>
+              <div><dt>{{ 'RESTAURANTS_CORRECTIONS.CREDIT_VAT' | transloco }}</dt><dd>{{ money(group.taxMinor) }}</dd></div>
+              <div><dt>{{ 'RESTAURANTS_CORRECTIONS.CREDIT_TOTAL' | transloco }}</dt><dd>{{ money(group.totalMinor) }}</dd></div>
+            </dl>
+          }
+        }
+        @if (result.originalPrintedReference || result.originalFiscalReference) {
+          <p class="break-all text-xs">{{ 'RESTAURANTS_CORRECTIONS.ORIGINAL_DGI' | transloco }} : {{ result.originalPrintedReference || result.originalFiscalReference }}</p>
         }
         @if (result.securityElements; as security) {
           <dl class="grid gap-2 text-xs sm:grid-cols-2">

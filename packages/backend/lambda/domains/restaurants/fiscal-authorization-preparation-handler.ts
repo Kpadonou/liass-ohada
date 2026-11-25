@@ -1,3 +1,4 @@
+import { prepareCreditFiscalAuthorization } from "./credit-fiscal-work";
 import * as c from "@liass-ohada/shared/restaurants";
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import { RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE as route } from "./fiscal-authorization-preparation-routes";
@@ -11,7 +12,10 @@ const schema = c.RestaurantFiscalAuthorizationPreparationRequestSchema.extend({
 
 export const restaurantFiscalAuthorizationPreparationHandler = createHandler(
   schema,
-  async (input, context) => RestaurantFiscalAuthorizationPreparationService.prepare({
+  async (input, context) => input.creditNoteId ? prepareCreditFiscalAuthorization({
+    orgId: context.orgId, actorId: context.userId, outletId: input.outletId,
+    sessionId: input.sessionId, invoiceId: input.invoiceId, creditNoteId: input.creditNoteId, scenarioId: input.scenarioId,
+  }) : RestaurantFiscalAuthorizationPreparationService.prepare({
     orgId: context.orgId,
     actorId: context.userId,
     outletId: input.outletId,

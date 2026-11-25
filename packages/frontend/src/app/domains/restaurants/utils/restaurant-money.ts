@@ -6,11 +6,11 @@ export function currencyDigits(currency: string): number {
   );
 }
 export function minorInput(amount: number, currency: string): string {
-  const digits = currencyDigits(currency),
-    value = BigInt(amount)
-      .toString()
-      .padStart(digits + 1, '0');
-  return digits ? `${value.slice(0, -digits)}.${value.slice(-digits)}` : value;
+  const digits = currencyDigits(currency);
+  const minor = BigInt(amount);
+  const sign = minor < 0n ? '-' : '';
+  const value = (minor < 0n ? -minor : minor).toString().padStart(digits + 1, '0');
+  return sign + (digits ? `${value.slice(0, -digits)}.${value.slice(-digits)}` : value);
 }
 /** Formats a valid amount for human entry without using floating-point money arithmetic. */
 export function groupedMinorInput(amount: number, currency: string, locale: string): string {

@@ -1,3 +1,4 @@
+import { readCreditFiscalIntent } from "./credit-fiscal-work";
 import { restaurantBeninRealTestWorkflow, RealTestConfiguration } from "./benin-real-test-workflow";
 import {
   RestaurantFiscalSourceRequestSchema as requestSchema,
@@ -79,7 +80,12 @@ export class RestaurantFiscalApplicationService {
         throw new AppError(409, "PROVENANCE_UNAVAILABLE");
       return { ...credit.original,
         proof: { ...credit.original.proof, digest: credit.sourceDigest },
-        originalFiscalReference: credit.originalFiscal.security!.codeMECeFDGI };
+        originalFiscalReference: credit.originalFiscal.security!.codeMECeFDGI,
+        originalPrintedReference: credit.fiscalOriginal?.printedReference,
+        creditLines: credit.credit.lines,
+        creditOriginal: credit.original,
+        originalSecurity: credit.originalFiscal.security!,
+      };
     }
     const source = await RestaurantInvoiceSourceVerifier.verify(
       scope, context.userId, request.sessionId, request.invoiceId,
@@ -159,6 +165,9 @@ export class RestaurantFiscalApplicationService {
     const securityElements = result.confirmed && this.real &&
       state?.status === "CONFIRMED" && state.execution === "REAL_TEST" &&
       state.securityEvidenceOrigin === "DGI_TEST" ? state.security ?? null : null;
+    if (securityElements && "originalSecurity" in source &&
+      (securityElements.codeMECeFDGI === source.originalSecurity.codeMECeFDGI ||
+       securityElements.qrCode === source.originalSecurity.qrCode)) throw new AppError(409, "FISCAL_SOURCE_MISMATCH");
     const seller = securityElements && source.issuanceProvenance.verified
       ? source.issuanceProvenance.evidence.seller?.seller ?? null
       : null;
@@ -168,6 +177,23 @@ export class RestaurantFiscalApplicationService {
       workState,
       securityElements,
       seller,
+      ...(request.creditNoteId && "creditLines" in source ? {
+        originalPrintedReference: source.originalPrintedReference,
+        creditPreparation: await (async () => {
+          const intent = await readCreditFiscalIntent(context.orgId, request.outletId, request.creditNoteId!);
+          return intent ? { status: intent.state, reason: intent.reason, providerMutationAllowed: false as const } : undefined;
+        })(),
+        creditTaxSummary: Object.entries(source.creditLines.reduce((groups, line) => {
+          const original = source.creditOriginal.lines.find(v => v.coordinate.orderId === line.orderId && v.coordinate.itemId === line.itemId);
+          const group = original?.line.snapshot.fiscalTreatment?.effectiveGroup;
+          if (!group) throw new AppError(409, "FISCAL_SOURCE_MISMATCH");
+          const current = groups[group] ??= { netMinor: 0, taxMinor: 0, totalMinor: 0 };
+          current.netMinor -= line.creditedAmountMinor - line.taxMinor;
+          current.taxMinor -= line.taxMinor; current.totalMinor -= line.creditedAmountMinor;
+          return groups;
+        }, {} as Record<string, { netMinor: number; taxMinor: number; totalMinor: number }>))
+          .map(([taxGroup, totals]) => ({ taxGroup, ...totals })),
+      } : {}),
       normalizedInvoice: securityElements && !request.creditNoteId && source.invoice
         ? (() => {
           const { invoiceId, documentKind: _documentKind, ...summary } = source.invoice;

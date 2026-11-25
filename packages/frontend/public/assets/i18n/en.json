@@ -291,7 +291,11 @@
     "LOADING": "Loading corrections…",
     "EMPTY": "No credit notes for this invoice.",
     "MORE": "Load more",
-    "UNIT": "unit"
+    "UNIT": "unit",
+    "CREDIT_NET": "Before tax",
+    "CREDIT_VAT": "VAT",
+    "CREDIT_TOTAL": "Total including tax",
+    "FISCAL_BLOCKED": "Credit-note normalization awaits fiscal validation."
   },
   "RESTAURANTS_TRACKING": {
     "SAVE_ERROR": "Inventory tracking could not be configured. Please try again.",

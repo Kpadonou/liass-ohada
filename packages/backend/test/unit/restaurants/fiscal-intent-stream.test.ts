@@ -54,3 +54,17 @@ test("a failed record is reported for retry while later records continue", async
   });
   expect(processorSpy).toHaveBeenCalledTimes(2);
 });
+
+test("credit INSERT dispatches only the credit preparation consumer", async () => {
+  const credits = await import("@/lambda/domains/restaurants/credit-fiscal-work");
+  const creditNoteId = "00000000-0000-4000-8000-000000000077";
+  const pk = K.restaurantCreditNotePK(work.orgId, work.outletId, creditNoteId);
+  const row = { ...work, creditNoteId, sourceReceiptDigest: "a".repeat(64), PK: pk,
+    SK: K.restaurantFiscalIntentSK(), entityType: "RESTAURANT_CREDIT_FISCAL_INTENT", schemaVersion: 1, state: "PENDING" };
+  const consume = jest.spyOn(credits, "processCreditFiscalIntent").mockResolvedValue(undefined);
+  jest.mocked(dynamoClient.send).mockResolvedValue({ Item: marshall(row) } as never);
+  const r = record("credit"); r.dynamodb.Keys.PK.S = pk;
+  expect(await processFiscalIntentStream(event(r))).toEqual({ batchItemFailures: [] });
+  expect(consume).toHaveBeenCalledWith(row);
+  expect(processorSpy).not.toHaveBeenCalled();
+});

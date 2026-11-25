@@ -376,7 +376,9 @@ test("linked FA reads its own confirmed result and the unchanged original DGI re
   const ownSecurity = { dateTime: "15/11/2026 10:00:00", qrCode: "credit-qr",
     codeMECeFDGI: "C".repeat(24), counters: "2/2 FA", nim: "TEST-NIM" };
   jest.spyOn(RestaurantCreditNoteFiscalSource, "verify").mockResolvedValue({
-    original: { proof: { digest }, issuanceProvenance: { verified: true,
+    credit: { lines: [{ orderId: "order", itemId: "item", creditedAmountMinor: 554, taxMinor: 54 }] },
+    fiscalOriginal: { printedReference: "TEST-NIM - 1" },
+    original: { lines: [{ coordinate: { orderId: "order", itemId: "item" }, line: { snapshot: { fiscalTreatment: { effectiveGroup: "B" } } } }], proof: { digest }, issuanceProvenance: { verified: true,
       evidence: { ...provenance, evidenceOrigin: "AUTHENTIC" } } },
     originalFiscal: { security: { codeMECeFDGI: originalCode } }, sourceDigest: creditDigest,
   } as never);
@@ -396,6 +398,8 @@ test("linked FA reads its own confirmed result and the unchanged original DGI re
     expect(result).toMatchObject({ creditNoteId, originalFiscalReference: originalCode,
       securityElements: ownSecurity, normalizedInvoice: null, resultAvailable: true });
     expect(result.securityElements?.codeMECeFDGI).not.toBe(originalCode);
+    expect(result.originalPrintedReference).toBe("TEST-NIM - 1");
+    expect(result.creditTaxSummary).toEqual([{ taxGroup: "B", netMinor: -500, taxMinor: -54, totalMinor: -554 }]);
   } finally {
     delete process.env.FISCAL_EXECUTION_MODE; delete process.env.FISCAL_REAL_TEST_ENABLED; delete process.env.STAGE;
   }

@@ -721,3 +721,20 @@ test("concurrent durable CreditNote retry increments active BusinessDay once", a
   await Service.create(scope, "manager", sessionId, intent);
   expect((await Cash.activeDay(scope))!.day.data.creditNoteCount).toBe(1);
 });
+
+test("new bound credit atomically retains one TEST preparation authorization without duplicate replay", async () => {
+  seed(2, false, "Article", true);
+  const provenance = await import("@/lambda/domains/restaurants/issuance-provenance-repository");
+  const binding = { environment: "TEST", connectionId: randomUUID(), policyVersion: 1 };
+  jest.spyOn(provenance.RestaurantIssuanceProvenanceRepository, "read").mockResolvedValue({ verified: true,
+    evidence: { evidenceOrigin: "AUTHENTIC", fiscalBinding: binding } } as never);
+  const input = { clientRequestId: randomUUID(), reason: "Fiscal credit", lines: selected.map(line => ({ ...line, quantity: 1 })) };
+  const credit = await Service.create(scope, "manager", sessionId, input);
+  const key = K.restaurantCreditNotePK(scope.orgId, scope.outletId, credit.data.creditNoteId);
+  const intent = [...db.rows.values()].map(row => unmarshall(row)).find(row => row.PK === key && row.SK === K.restaurantFiscalIntentSK());
+  expect(intent).toMatchObject({ state: "PENDING", invoiceId: billId, creditNoteId: credit.data.creditNoteId,
+    sourceReceiptDigest: credit.data.sourceReceiptDigest, fiscalBinding: binding });
+  const count = db.rows.size;
+  expect((await Service.create(scope, "manager", sessionId, input)).data.creditNoteId).toBe(credit.data.creditNoteId);
+  expect(db.rows.size).toBe(count);
+});

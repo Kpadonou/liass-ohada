@@ -1,3 +1,5 @@
+import { creditFiscalIntentWrite } from "./credit-fiscal-work";
+import { RestaurantIssuanceProvenanceRepository } from "./issuance-provenance-repository";
 import { randomBytes, randomUUID } from "crypto";
 import { RestaurantDocumentCollections as Documents } from "./document-collections";
 import { z } from "zod";
@@ -556,6 +558,12 @@ export class RestaurantCreditNoteService {
         { ":digest": invoice.digest, ":amount": invoice.dueMinor },
       ),
     );
+    const provenance = await RestaurantIssuanceProvenanceRepository.read(scope, manifest);
+    if (provenance.verified && provenance.evidence.evidenceOrigin === "AUTHENTIC" && provenance.evidence.fiscalBinding) {
+      actions.push(creditFiscalIntentWrite({ ...scope, invoiceId: invoice.invoiceId, creditNoteId,
+        sessionId, actorId: actor, createdAt: now, sourceReceiptDigest: invoice.digest,
+        fiscalBinding: provenance.evidence.fiscalBinding }));
+    }
     const PK = K.restaurantCreditNotePK(
       scope.orgId,
       scope.outletId,

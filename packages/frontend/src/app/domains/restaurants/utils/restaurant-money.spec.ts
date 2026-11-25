@@ -55,3 +55,9 @@ it.each([150000, 300000, 1050000])(
     expect(restaurantPrice(amount, 'XOF', 'fr')).toContain('XOF');
   },
 );
+
+it('preserves exact negative minor units for credit receipts', () => {
+  expect(minorInput(-1, 'EUR')).toBe('-0.01');
+  expect(minorInput(-14500, 'XOF')).toBe('-14500');
+  expect(minorInput(-14500, 'EUR')).toBe('-145.00');
+});

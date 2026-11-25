@@ -1,3 +1,4 @@
+import { processCreditFiscalIntent } from "./credit-fiscal-work";
 import type { DynamoDBStreamEvent } from "aws-lambda";
 import { GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
@@ -32,7 +33,13 @@ export async function processFiscalIntentStream(event: DynamoDBStreamEvent) {
         ConsistentRead: true,
       }));
       if (!response.Item) throw new Error("Missing committed fiscal intent");
-      const row = intent.parse(unmarshall(response.Item));
+      const committed = unmarshall(response.Item);
+      if (committed.entityType === "RESTAURANT_CREDIT_FISCAL_INTENT") {
+        if (committed.PK !== PK) throw new Error("Fiscal credit scope mismatch");
+        await processCreditFiscalIntent(committed);
+        continue;
+      }
+      const row = intent.parse(committed);
       if (row.PK !== PK || row.PK !== K.restaurantBillPK(row.orgId, row.outletId, row.invoiceId))
         throw new Error("Fiscal intent scope mismatch");
       if (!Object.hasOwn(row, "fiscalBinding")) continue;

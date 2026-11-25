@@ -291,7 +291,11 @@
     "LOADING": "Chargement des corrections…",
     "EMPTY": "Aucun avoir pour cette facture.",
     "MORE": "Afficher la suite",
-    "UNIT": "unité"
+    "UNIT": "unité",
+    "CREDIT_NET": "Hors taxe",
+    "CREDIT_VAT": "TVA",
+    "CREDIT_TOTAL": "TTC",
+    "FISCAL_BLOCKED": "Normalisation de l’avoir en attente de validation fiscale."
   },
   "RESTAURANTS_TRACKING": {
     "SAVE_ERROR": "Le suivi de stock n'a pas pu être configuré. Réessayez.",

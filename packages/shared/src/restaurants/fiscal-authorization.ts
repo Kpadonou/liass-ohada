@@ -4,6 +4,7 @@ const id = z.string().uuid();
 export const RestaurantFiscalAuthorizationPreparationRequestSchema = z.object({
   scenarioId: z.string().regex(/^([0-9]{2})$/),
   commandId: z.string().uuid(),
+  creditNoteId: id.optional(),
 }).strict();
 
 const totals = z.object({
@@ -38,3 +39,9 @@ export type RestaurantFiscalAuthorizationPreparationRequest = z.infer<
 export type RestaurantFiscalAuthorizationPreparationResponse = z.infer<
   typeof RestaurantFiscalAuthorizationPreparationResponseSchema
 >;
+
+export const RestaurantCreditFiscalAuthorizationResponseSchema = z.object({
+  creditNoteId: id, invoiceId: id, environment: z.literal("TEST"), status: z.literal("BLOCKED"),
+  reason: z.literal("PROVIDER_CREDIT_WIRE_SEMANTICS_UNVERIFIED"), providerMutationAllowed: z.literal(false),
+  originalFiscalReference: z.string().min(1).max(500), originalPrintedReference: z.string().min(1).max(500).optional(),
+}).strict();
