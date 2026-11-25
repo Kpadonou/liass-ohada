@@ -4,7 +4,8 @@ import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
 import { RestaurantFiscalWorkProcessor } from "@/lambda/domains/restaurants/fiscal-work-processor";
 import { recoverBlockedFiscalWork } from "@/lambda/domains/restaurants/fiscal-work-recovery";
-import { handler } from "@/lambda/domains/restaurants/real-test-fiscal-handler";
+import { handler, realTestFiscalService } from "@/lambda/domains/restaurants/real-test-fiscal-handler";
+import { RestaurantFiscalWorkRepository } from "@/lambda/domains/restaurants/fiscal-work-repository";
 
 const request = { type: "RECOVER_FISCAL_WORK_V1", orgId: "org",
   outletId: "00000000-0000-4000-8000-000000000001",
@@ -46,4 +47,26 @@ test("duplicate recovery delegates to processor fencing without a second mutatio
   expect(await Promise.all([recoverBlockedFiscalWork(request), recoverBlockedFiscalWork(request)]))
     .toEqual([{ state: "BLOCKED" }, { state: "NOT_CLAIMED" }]);
   expect(processSpy).toHaveBeenCalledTimes(2);
+});
+test("local completion uses persisted confirmation without entering execution, including replay", async () => {
+  readSpy.mockResolvedValue({ Item: marshall({ ...row, state: "CLAIMED" }) });
+  jest.spyOn(realTestFiscalService, "confirmedResult").mockResolvedValue({ confirmed: true,
+    status: "CONFIRMED", evidenceOrigin: "DGI_TEST", securityElements: { qrCode: "persisted-qr" } } as never);
+  const settle = jest.spyOn(RestaurantFiscalWorkRepository, "settleConfirmed").mockResolvedValue();
+  const local = { ...request, type: "COMPLETE_CONFIRMED_FISCAL_WORK_V1" as const };
+  expect(await handler(local)).toMatchObject({ workState: "CONFIRMED", securityElements: { qrCode: "persisted-qr" } });
+  readSpy.mockResolvedValue({ Item: marshall({ ...row, state: "CONFIRMED" }) });
+  expect(await handler(local)).toMatchObject({ workState: "CONFIRMED" });
+  expect(settle).toHaveBeenCalledTimes(2);
+  expect(processSpy).not.toHaveBeenCalled();
+});
+test("local completion rejects absent confirmation and cross-tenant identity", async () => {
+  readSpy.mockResolvedValue({ Item: marshall({ ...row, state: "CLAIMED" }) });
+  jest.spyOn(realTestFiscalService, "confirmedResult").mockResolvedValue({ confirmed: false } as never);
+  const settle = jest.spyOn(RestaurantFiscalWorkRepository, "settleConfirmed").mockResolvedValue();
+  const local = { ...request, type: "COMPLETE_CONFIRMED_FISCAL_WORK_V1" as const };
+  await expect(handler(local)).rejects.toThrow("confirmation required");
+  await expect(handler({ ...local, orgId: "foreign" })).rejects.toThrow("identity mismatch");
+  expect(settle).not.toHaveBeenCalled();
+  expect(processSpy).not.toHaveBeenCalled();
 });

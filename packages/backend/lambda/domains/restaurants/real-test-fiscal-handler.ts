@@ -1,6 +1,6 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, DynamoDBStreamEvent } from "aws-lambda";
 import { processFiscalIntentStream } from "./fiscal-intent-stream";
-import { recoverBlockedFiscalWork, fiscalWorkRecoveryRequest } from "./fiscal-work-recovery";
+import { recoverBlockedFiscalWork, fiscalWorkRecoveryRequest, completeConfirmedFiscalWork } from "./fiscal-work-recovery";
 import { AppError } from "@/lambda/shared/app-error";
 import { realFiscalTestEnabled } from "../fiscal-compliance/core/test-execution";
 import { BeninEMecefTestAdapter } from "../fiscal-compliance/providers/benin-emecef/benin-emecef-test-adapter";
@@ -35,8 +35,9 @@ export const realTestFiscalService = new RestaurantFiscalApplicationService(asyn
 }, true);
 export function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer): Promise<{ statusCode: number; body: string }>;
 export function handler(event: DynamoDBStreamEvent): Promise<{ batchItemFailures: { itemIdentifier: string }[] }>;
-export function handler(event: { type: "RECOVER_FISCAL_WORK_V1"; orgId: string; outletId: string; sessionId: string; invoiceId: string }): ReturnType<typeof recoverBlockedFiscalWork>;
-export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer | DynamoDBStreamEvent | { type: "RECOVER_FISCAL_WORK_V1"; orgId: string; outletId: string; sessionId: string; invoiceId: string }) {
+export function handler(event: { type: "RECOVER_FISCAL_WORK_V1" | "COMPLETE_CONFIRMED_FISCAL_WORK_V1"; orgId: string; outletId: string; sessionId: string; invoiceId: string }): ReturnType<typeof recoverBlockedFiscalWork> | ReturnType<typeof completeConfirmedFiscalWork>;
+export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer | DynamoDBStreamEvent | { type: "RECOVER_FISCAL_WORK_V1" | "COMPLETE_CONFIRMED_FISCAL_WORK_V1"; orgId: string; outletId: string; sessionId: string; invoiceId: string }) {
+  if ("type" in event && event.type === "COMPLETE_CONFIRMED_FISCAL_WORK_V1") return completeConfirmedFiscalWork(event);
   if ("type" in event) return recoverBlockedFiscalWork(fiscalWorkRecoveryRequest.parse(event));
   if ("Records" in event) return processFiscalIntentStream(event);
   if (event.routeKey === `${RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE.method} ${RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE.path}`)
