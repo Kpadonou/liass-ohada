@@ -89,3 +89,24 @@ retirer les séparateurs ni substituer un numéro commercial sans preuve du form
 attendu par DGI. Le parcours de preuve source et la fiscalisation automatique des
 avoirs restent à compléter; les tests simulés à référence de 24 caractères ne
 prouvent pas l'acceptation de ces originaux TEST réels.
+
+## Référence fonctionnelle PERFORMA — 25 novembre 2026
+
+Fichier fourni par le Product Owner : `/Users/kpadonou/Downloads/PERFORMA_MECEF_AUTO_DECLA (2).pdf`,
+24 pages, SHA-256 `d03307a04cc55eb0bf8df0447f3e006cc5ec7ccd67927a0a764f6d47dfcef215`.
+Pages 9–10 inspectées visuellement : vente A2/B3 TTC14500 (B HT3814/TVA686),
+avoir signé -14500, quantités -2/-3, référence imprimée `ED04999905 - 1378`,
+sécurité et QR distincts. Il s'agit d'une référence de comportement documentaire
+d'un autre logiciel, pas d'une preuve Liass ni d'une spécification d'encodage API.
+
+API historique p.9 et manuel p.9 : référence API = code original de 24 caractères.
+API p.10 : quantity decimal; ces pages ne prouvent pas le signe des quantités
+FA/EA. Aucun retrait de séparateurs ni changement de signes wire n'est autorisé
+par ce PDF. Le module partagé `core/credit-original.ts` sépare désormais preuve
+originale authentique, référence imprimée NIM/compteur global et référence wire.
+Le consommateur Restaurants appelle ce contrôle avant toute réservation fiscale;
+un original formaté valide reste authentique mais son mapping wire est bloqué
+explicitement. Les limites commerciales/cumulatives et déduplications existantes
+ne changent pas. La projection signée partagée est testée; son raccordement au
+rendu applicatif et le parcours d'autorisation/automatisation des avoirs restent
+à terminer. Cas06/18/20 sans acceptation DGI réelle.

@@ -1,3 +1,4 @@
+import { originalCreditWireReference, confirmedCreditOriginal } from "../fiscal-compliance/core/credit-original";
 import { createHash } from "node:crypto";
 import { clean } from "@/lambda/shared/authority/integrity";
 import { restaurantQuantityAmountMinor } from "@liass-ohada/shared/restaurant-quantity";
@@ -34,7 +35,12 @@ export async function prepareRestaurantBeninCredit(input: {
   const scope = { orgId: principal.orgId, outletId: input.outletId };
   const source = await RestaurantCreditNoteFiscalSource.verify(scope, principal.actorId,
     input.sessionId, input.invoiceId, identity.sourceDocumentId);
-  const originalType = source.originalFiscal.fiscalDocumentType;
+  const originalEvidence = confirmedCreditOriginal(source.originalFiscal, {
+    orgId: principal.orgId, sourceDomain: "restaurants", sourceDocumentId: input.invoiceId,
+    sourceDigest: source.original.proof.digest,
+  });
+  const wireReference = originalCreditWireReference(originalEvidence);
+  const originalType = originalEvidence.originalType;
   if ((originalType === "FV" ? "FA" : "EA") !== config.invoiceType)
     throw new Error("FISCAL_ORIGINAL_TYPE_MISMATCH");
   const original = await prepareRestaurantFiscalInvoice({ scope, actorId: principal.actorId,
@@ -95,7 +101,7 @@ export async function prepareRestaurantBeninCredit(input: {
   if (source.credit.lines.reduce((sum, line) => sum + line.creditedAmountMinor, 0) !== total)
     throw new Error("FISCAL_CREDIT_AMOUNT_MISMATCH");
   const invoice = InvoiceRequestDataDtoSchema.parse({ ifu: originalInvoice.ifu,
-    type: config.invoiceType, reference: source.originalFiscal.security!.codeMECeFDGI,
+    type: config.invoiceType, reference: wireReference,
     operator: { name: config.operator.name }, items,
     ...(originalInvoice.client ? { client: originalInvoice.client } : {}) });
   const payload = { invoice, expected: { itemTotals: source.credit.lines.map(v => v.creditedAmountMinor), total } };

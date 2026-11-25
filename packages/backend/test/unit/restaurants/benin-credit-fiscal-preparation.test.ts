@@ -28,6 +28,8 @@ function arrange(type: "FV" | "EV", groups: ("A" | "B" | "C" | "E")[]) {
     credit: { data: { amountMinor: total }, lines },
     original: { proof: { digest: originalDigest } },
     originalFiscal: { fiscalDocumentType: type, sourceDigest: originalDigest,
+      identity: { orgId: "org", sourceDomain: "restaurants", sourceDocumentId: invoiceId, sourceDocumentType: "INVOICE", environment: "TEST" },
+      status: "CONFIRMED", execution: "REAL_TEST", securityEvidenceOrigin: "DGI_TEST", obligationId: "original",
       security: { codeMECeFDGI: code } }, sourceDigest: "b".repeat(64),
   } as never);
   jest.spyOn(originalPreparation, "prepareRestaurantFiscalInvoice").mockResolvedValue({

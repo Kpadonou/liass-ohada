@@ -1,3 +1,4 @@
+import { confirmedCreditOriginal } from "../fiscal-compliance/core/credit-original";
 import { createHash } from "node:crypto";
 import { AppError } from "@/lambda/shared/app-error";
 import { FiscalAttemptStore } from "../fiscal-compliance/persistence/fiscal-attempt-store";
@@ -27,12 +28,9 @@ export class RestaurantCreditNoteFiscalSource {
       sourceDomain: "restaurants", sourceDocumentType: "INVOICE",
       sourceDocumentId: invoiceId, jurisdiction: "BJ", obligation: "NORMALIZE" };
     const originalFiscal = await new FiscalAttemptStore().read(fiscalIdentity);
-    if (originalFiscal?.status !== "CONFIRMED" || originalFiscal.execution !== "REAL_TEST" ||
-      originalFiscal.securityEvidenceOrigin !== "DGI_TEST" ||
-      originalFiscal.sourceDigest !== source.proof.digest ||
-      !["FV", "EV"].includes(originalFiscal.fiscalDocumentType ?? "") ||
-      !originalFiscal.security || originalFiscal.security.codeMECeFDGI.length !== 24)
-      throw new AppError(409, "ORIGINAL_FISCAL_CERTIFICATION_REQUIRED");
+    if (!originalFiscal) throw new AppError(409, "ORIGINAL_FISCAL_CERTIFICATION_REQUIRED");
+    const fiscalOriginal = confirmedCreditOriginal(originalFiscal, { orgId: scope.orgId,
+      sourceDomain: "restaurants", sourceDocumentId: invoiceId, sourceDigest: source.proof.digest });
     const controls = await RestaurantCreditNoteService.creditability(scope, sessionId);
     if (controls.finalBillId !== invoiceId || controls.currency !== note.currency ||
       controls.originalAmountMinor !== source.invoice.dueMinor ||
@@ -53,9 +51,9 @@ export class RestaurantCreditNoteFiscalSource {
       originalProofDigest: source.proof.digest,
       originalFiscalObligationId: originalFiscal.obligationId,
       originalFiscalType: originalFiscal.fiscalDocumentType,
-      originalFiscalCode: originalFiscal.security.codeMECeFDGI,
+      originalFiscalCode: fiscalOriginal.security.codeMECeFDGI,
       note, lines: credit.lines,
     })).digest("hex");
-    return { credit, original: source, originalFiscal, sourceDigest };
+    return { credit, original: source, originalFiscal, fiscalOriginal, sourceDigest };
   }
 }
