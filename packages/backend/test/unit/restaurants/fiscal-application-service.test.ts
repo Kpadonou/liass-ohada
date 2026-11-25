@@ -13,6 +13,7 @@ import { scope, id, digest, provenance } from "./provenance-fixture";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
+import { RestaurantFiscalResultResponseSchema } from "@liass-ohada/shared/restaurants";
 jest.mock("@/lambda/domains/restaurants/benin-synthetic-workflow", () => ({
   restaurantBeninSyntheticWorkflow: jest.fn(),
 }));
@@ -327,6 +328,12 @@ test("authorized result retrieves durable DGI TEST security while pending eviden
   const base = state!;
   Object.assign(process.env, { FISCAL_EXECUTION_MODE: "REAL_TEST", FISCAL_REAL_TEST_ENABLED: "1", STAGE: "dev" });
   jest.mocked(RestaurantInvoiceSourceVerifier.verify).mockResolvedValue({ verified: true, evidence: {
+    invoice: { invoiceId: id, documentKind: "INVOICE", guestSessionId: id,
+      scopeKind: "GUEST_SESSION", schemaVersion: 1, outletName: "Outlet", restaurantName: "Seller",
+      tableName: "Table", openedAt: "2026-11-14T10:00:00.000Z", issuedAt: "2026-11-14T10:01:00.000Z",
+      currency: "XOF", dueMinor: 2000, paidMinor: 2000,
+      paidByMethodMinor: { CASH: 2000, CARD: 0, MOBILE_MONEY: 0 },
+      partCount: 2, commercialPartCount: 1, settlementPartCount: 1, lineCount: 1, paymentCount: 1, digest },
     proof: { digest }, issuanceProvenance: { verified: true, evidence: { ...provenance, evidenceOrigin: "AUTHENTIC" } },
   } } as never);
   try {
@@ -336,6 +343,9 @@ test("authorized result retrieves durable DGI TEST security while pending eviden
     expect(await real.confirmedResult(context, request)).toMatchObject({
       resultAvailable: true, legallyNormalized: false, securityElements: security,
     });
+    const result = RestaurantFiscalResultResponseSchema.parse(await real.confirmedResult(context, request));
+    expect(result.normalizedInvoice).toMatchObject({ receiptId: id, documentKind: "OPERATIONAL_RECEIPT" });
+    expect(result.securityElements).toEqual(security);
     state = { ...state, status: "UNKNOWN_OUTCOME", uncertainOperation: "CONFIRM" };
     expect(await real.confirmedResult(context, request)).toMatchObject({
       resultAvailable: false, securityElements: null, mutationRetryAllowed: false,
