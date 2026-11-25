@@ -28,7 +28,8 @@ export type CreditFiscalIntent = z.infer<typeof schema>;
  * credit partition and fiscal intent SK; no new index or historical replay. */
 export function creditFiscalIntentWrite(input: Omit<CreditFiscalIntent, "PK" | "SK" | "entityType" | "schemaVersion" | "state">): TransactWriteItem {
   const row = schema.parse({ ...input, PK: K.restaurantCreditNotePK(input.orgId, input.outletId, input.creditNoteId),
-    SK: K.restaurantFiscalIntentSK(), entityType: "RESTAURANT_CREDIT_FISCAL_INTENT", schemaVersion: 1, state: "PENDING" });
+    SK: K.restaurantFiscalIntentSK(), entityType: "RESTAURANT_CREDIT_FISCAL_INTENT", schemaVersion: 1, state: input.fiscalBinding.environment === "TEST" ? "PENDING" : "BLOCKED",
+    ...(input.fiscalBinding.environment === "PRODUCTION" ? { reason: "PRODUCTION_DISABLED" } : {}) });
   return { Put: { TableName: restaurantsTableName(), Item: marshall(row), ConditionExpression: "attribute_not_exists(PK)" } };
 }
 export async function processCreditFiscalIntent(raw: unknown) {
