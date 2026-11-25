@@ -3,6 +3,7 @@ import {
   RestaurantFiscalSourceRequestSchema as requestSchema,
   RestaurantFiscalInitiateRequestSchema as commandSchema,
   RestaurantFiscalConfirmRequestSchema,
+  RestaurantReceiptSummarySchema,
 } from "@liass-ohada/shared/restaurants";
 import { z } from "zod";
 import { GetItemCommand } from "@aws-sdk/client-dynamodb";
@@ -152,7 +153,12 @@ export class RestaurantFiscalApplicationService {
       workState,
       securityElements,
       seller,
-      normalizedInvoice: securityElements && !request.creditNoteId ? source.invoice ?? null : null,
+      normalizedInvoice: securityElements && !request.creditNoteId && source.invoice
+        ? (() => {
+          const { invoiceId, documentKind: _documentKind, ...summary } = source.invoice;
+          return RestaurantReceiptSummarySchema.parse({ ...summary, receiptId: invoiceId,
+            documentKind: "OPERATIONAL_RECEIPT" });
+        })() : null,
       resultAvailable: result.confirmed,
       evidenceOrigin: result.confirmed ? (this.real ? "DGI_TEST" as const : "SYNTHETIC" as const) : null,
     };
