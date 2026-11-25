@@ -6,6 +6,8 @@ import { config, dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
 import { obligationIdentity } from "../fiscal-compliance/core/fiscal-attempt-state";
 import { restaurantsTableName } from "./restaurant-storage";
+import type { FiscalIssuanceBinding } from "@liass-ohada/shared/shared";
+import { canonical } from "@/lambda/shared/authority/integrity";
 
 const rowSchema = z.object({
   PK: z.string(), SK: z.string(), orgId: z.string(), outletId: z.string(),
@@ -81,7 +83,7 @@ export class RestaurantFiscalWorkRepository {
    * authorizes a second provider mutation; the attempt absence is checked in
    * the same transaction as both claim writes. */
   static async claim(input: { orgId: string; outletId: string; invoiceId: string;
-    sessionId: string; createdAt: string }, now = new Date()) {
+    sessionId: string; createdAt: string; fiscalBinding?: FiscalIssuanceBinding }, now = new Date()) {
     const { orgId, outletId, invoiceId, sessionId, createdAt } = input;
     const intentKey = { PK: K.restaurantBillPK(orgId, outletId, invoiceId), SK: K.restaurantFiscalIntentSK() };
     const workKey = { PK: K.restaurantFiscalWorkPK(orgId, outletId, createdAt.slice(0, 10).replace(/-/g, "")),
@@ -101,6 +103,8 @@ export class RestaurantFiscalWorkRepository {
       intent?.state !== row.state || intent?.claimVersion !== row.claimVersion ||
       intent?.claimToken !== row.claimToken || intent?.claimUntil !== row.claimUntil)
       throw new Error("Fiscal intent binding mismatch");
+    if (input.fiscalBinding && (!intent.fiscalBinding || canonical(intent.fiscalBinding) !== canonical(input.fiscalBinding)))
+      throw new Error("Fiscal intent policy mismatch");
     if (row.state === "CONFIRMED" ||
       (row.state === "CLAIMED" && (!row.claimUntil || Date.parse(row.claimUntil) > now.getTime())))
       return undefined;
@@ -121,6 +125,10 @@ export class RestaurantFiscalWorkRepository {
     } });
     // Existing claims require exact fencing, including expiry and prior token.
     const items = [update(workKey, "RESTAURANT_FISCAL_WORK"), update(intentKey, "RESTAURANT_FISCAL_INTENT")];
+    if (input.fiscalBinding) {
+      items[1].Update.ConditionExpression += " AND fiscalBinding = :binding";
+      Object.assign(items[1].Update.ExpressionAttributeValues, marshall({ ":binding": input.fiscalBinding }));
+    }
     if (row.claimVersion !== undefined) for (const item of items) {
       const op = item.Update;
       op.ConditionExpression = op.ConditionExpression.replace(

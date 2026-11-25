@@ -9,7 +9,8 @@ import { processFiscalIntentStream } from "@/lambda/domains/restaurants/fiscal-i
 const work = { orgId: "org", outletId: "00000000-0000-4000-8000-000000000001",
   sessionId: "00000000-0000-4000-8000-000000000002",
   invoiceId: "00000000-0000-4000-8000-000000000003",
-  actorId: "actor", createdAt: "2026-11-18T10:00:00.000Z" };
+  actorId: "actor", createdAt: "2026-11-18T10:00:00.000Z",
+  fiscalBinding: { environment: "TEST", connectionId: "00000000-0000-4000-8000-000000000004", policyVersion: 1 } };
 const PK = K.restaurantBillPK(work.orgId, work.outletId, work.invoiceId);
 const record = (sequence: string, eventName = "INSERT", sk = K.restaurantFiscalIntentSK()) => ({
   eventName, dynamodb: { SequenceNumber: sequence, Keys: { PK: { S: PK }, SK: { S: sk } } },
@@ -37,11 +38,11 @@ test("duplicate delivery reaches the idempotent processor without mutating in th
   expect(await processFiscalIntentStream(event(record("1"), record("2")))).toEqual({ batchItemFailures: [] });
   expect(processorSpy).toHaveBeenCalledTimes(2);
 });
-test("a policy-bound intent cannot fall back to the legacy processor", async () => {
+test("historical unbound work is not replayed", async () => {
+  const { fiscalBinding: _binding, ...historical } = work;
   jest.mocked(dynamoClient.send).mockResolvedValueOnce({ Item: marshall({
-    PK, SK: K.restaurantFiscalIntentSK(), ...work,
+    PK, SK: K.restaurantFiscalIntentSK(), ...historical,
     entityType: "RESTAURANT_FISCAL_INTENT", schemaVersion: 1, state: "PENDING",
-    fiscalBinding: { environment: "TEST", connectionId: work.outletId, policyVersion: 1 },
   }) } as never);
   expect(await processFiscalIntentStream(event(record("1")))).toEqual({ batchItemFailures: [] });
   expect(processorSpy).not.toHaveBeenCalled();

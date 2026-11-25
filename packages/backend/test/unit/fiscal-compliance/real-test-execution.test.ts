@@ -167,6 +167,19 @@ function setup(body: unknown = security, status = 200, options?: {
   );
   return { flow, transport, authorize };
 }
+test("bound commands preserve the immutable policy through durable confirmation", async () => {
+  const fiscalBinding = { environment: "TEST" as const, connectionId: config.outletId, policyVersion: 4 };
+  const { flow, transport } = setup(security, 200, { configuration: { ...config, fiscalBinding } });
+  await create(flow);
+  await flow.reconcile(principal, identity);
+  const other = setup(security, 200, { configuration: { ...config, fiscalBinding: { ...fiscalBinding, policyVersion: 5 } } });
+  await expect(other.flow.confirm(principal, identity, "wrong-policy", { confirm: true })).rejects.toThrow();
+  expect(other.transport).not.toHaveBeenCalled();
+  await flow.confirm(principal, identity, "confirm", { confirm: true });
+  expect(await new FiscalAttemptStore().read(identity)).toMatchObject({ status: "CONFIRMED", fiscalBinding,
+    uid: "provider-uid", securityEvidenceOrigin: "DGI_TEST" });
+  expect(transport.mock.calls.filter(([request]) => request.method === "POST")).toHaveLength(1);
+});
 test("classified A and B lines complete the durable real TEST journey without the legacy single-line projection", async () => {
   const mixedTotals = { ...totals, taa: 1000, tab: 2000, total: 3000 };
   const mixedPayload = {

@@ -35,6 +35,7 @@ export async function recoverBlockedFiscalWork(input: unknown) {
   }));
   if (!result.Item) throw new Error("Blocked fiscal intent not found");
   const row = blockedIntent.parse(unmarshall(result.Item));
+  if (Object.hasOwn(row, "fiscalBinding")) throw new Error("Bound fiscal intent requires the shared processor");
   if (row.PK !== PK || row.SK !== K.restaurantFiscalIntentSK() ||
     row.orgId !== request.orgId || row.outletId !== request.outletId ||
     row.sessionId !== request.sessionId || row.invoiceId !== request.invoiceId)

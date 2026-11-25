@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { fiscalAdjudicationAuditSchema } from "./capture-adjudication";
+import { FiscalIssuanceBindingSchema, type FiscalIssuanceBinding } from "@liass-ohada/shared/shared";
 
 // Pure transition model only. D09/D15/G15 do not authorize a new writer.
 // A future approved owner must atomically compare version, reserve obligation and
@@ -11,7 +12,7 @@ const operation = z.enum(["CREATE", "CONFIRM", "CANCEL"]);
 const identitySchema = z
   .object({
     orgId: id,
-    environment: z.literal("TEST"),
+    environment: z.enum(["TEST", "PRODUCTION"]),
     sourceDomain: id,
     sourceDocumentType: id,
     sourceDocumentId: id,
@@ -60,8 +61,9 @@ export const fiscalAttemptStateSchema = z
     identity: identitySchema,
     obligationId: digest,
     attemptId: id,
+    fiscalBinding: FiscalIssuanceBindingSchema.optional(),
     provider: id,
-    execution: z.enum(["SYNTHETIC", "REAL_TEST"]).optional(),
+    execution: z.enum(["SYNTHETIC", "REAL_TEST", "REAL_PRODUCTION"]).optional(),
     diagnostic: diagnosticSchema.optional(),
     sourceDigest: digest,
     requestDigest: digest,
@@ -91,13 +93,19 @@ export const fiscalAttemptStateSchema = z
     fiscalTotalsDigest: digest.optional(),
     providerTotal: z.number().int().safe().optional(),
     security: securitySchema.optional(),
-    securityEvidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST"]).optional(),
+    securityEvidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST", "DGI_PRODUCTION"]).optional(),
     adjudication: fiscalAdjudicationAuditSchema.optional(),
   })
   .strict()
   .superRefine((s, ctx) => {
     if (
       s.obligationId !== obligationIdentity(s.identity) ||
+      (s.fiscalBinding !== undefined && s.fiscalBinding.environment !== s.identity.environment) ||
+      (s.identity.environment === "PRODUCTION" && (!s.fiscalBinding || s.execution !== "REAL_PRODUCTION" || s.provider !== "BENIN_EMECEF_PRODUCTION")) ||
+      (s.execution === "REAL_PRODUCTION" && (s.identity.environment !== "PRODUCTION" ||
+        (s.securityEvidenceOrigin !== undefined && s.securityEvidenceOrigin !== "DGI_PRODUCTION") ||
+        (["CONFIRMED", "CANCELLED"].includes(s.status) && (s.securityEvidenceOrigin !== "DGI_PRODUCTION" || !s.diagnostic?.captured)))) ||
+      (s.securityEvidenceOrigin === "DGI_PRODUCTION" && s.execution !== "REAL_PRODUCTION") ||
       (s.execution === "REAL_TEST" && s.provider !== "BENIN_EMECEF_TEST") ||
       (s.securityEvidenceOrigin === "DGI_TEST" &&
         s.execution !== "REAL_TEST") ||
@@ -175,8 +183,9 @@ export function obligationIdentity(identity: FiscalObligationIdentity): string {
 export function reserveFiscalAttempt(input: {
   identity: FiscalObligationIdentity;
   attemptId: string;
+  fiscalBinding?: FiscalIssuanceBinding;
   provider: string;
-  execution?: "SYNTHETIC" | "REAL_TEST";
+  execution?: "SYNTHETIC" | "REAL_TEST" | "REAL_PRODUCTION";
   sourceDigest: string;
   requestDigest: string;
   fiscalDocumentType?: "FV" | "EV" | "FA" | "EA";
@@ -214,7 +223,7 @@ const eventSchema = z.discriminatedUnion("kind", [
       kind: z.literal("CONFIRMED"),
       commandId: id,
       security: securitySchema,
-      evidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST"]).optional(),
+      evidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST", "DGI_PRODUCTION"]).optional(),
       diagnostic: diagnosticSchema.optional(),
     })
     .strict(),
@@ -223,7 +232,7 @@ const eventSchema = z.discriminatedUnion("kind", [
       kind: z.literal("CANCELLED"),
       commandId: id,
       security: securitySchema,
-      evidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST"]).optional(),
+      evidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST", "DGI_PRODUCTION"]).optional(),
       diagnostic: diagnosticSchema.optional(),
     })
     .strict(),
@@ -283,13 +292,13 @@ export function transitionFiscalAttempt(
     if (
       e.operation === "CONFIRM" &&
       (current.providerTotal !== current.expectedTotal ||
-        (current.execution === "REAL_TEST" && !current.fiscalTotalsVerified))
+        ((current.execution === "REAL_TEST" || current.execution === "REAL_PRODUCTION") && !current.fiscalTotalsVerified))
     )
       deny();
     if (e.diagnosticReference)
       next.diagnostic = { reference: e.diagnosticReference, captured: false };
     if (e.diagnosticReference &&
-      (!(["CONFIRM", "CANCEL"].includes(e.operation)) || current.execution !== "REAL_TEST"))
+      (!(["CONFIRM", "CANCEL"].includes(e.operation)) || (current.execution !== "REAL_TEST" && current.execution !== "REAL_PRODUCTION")))
       deny();
     next.commands.push({
       commandId: e.commandId,
@@ -362,17 +371,18 @@ export function transitionFiscalAttempt(
       if ((e.kind === "CONFIRMED" ? "CONFIRM" : "CANCEL") !== op) deny();
       next.status = e.kind;
       next.security = e.security;
-      if ((e.kind === "CONFIRMED" || e.kind === "CANCELLED") && current.execution === "REAL_TEST") {
+      if (current.execution === "REAL_TEST" || current.execution === "REAL_PRODUCTION") {
+        const evidenceOrigin = current.execution === "REAL_TEST" ? "DGI_TEST" : "DGI_PRODUCTION";
         if (
-          e.evidenceOrigin !== "DGI_TEST" ||
+          e.evidenceOrigin !== evidenceOrigin ||
           !e.diagnostic?.captured ||
           e.diagnostic.reference !== current.diagnostic?.reference
         )
           deny();
         next.diagnostic = e.diagnostic;
-        next.securityEvidenceOrigin = "DGI_TEST";
+        next.securityEvidenceOrigin = evidenceOrigin;
       } else {
-        if (e.evidenceOrigin === "DGI_TEST") deny();
+        if (e.evidenceOrigin && e.evidenceOrigin !== "SYNTHETIC") deny();
         next.securityEvidenceOrigin = "SYNTHETIC";
       }
     }

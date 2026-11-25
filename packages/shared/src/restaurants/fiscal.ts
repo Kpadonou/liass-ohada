@@ -45,7 +45,7 @@ const fields = {
   originalFiscalReference: z.string().length(24).optional(),
   environment: z.enum(["TEST", "PRODUCTION"]),
   fiscalBinding: FiscalIssuanceBindingSchema.optional(),
-  execution: z.enum(["SYNTHETIC", "REAL_TEST"]),
+  execution: z.enum(["SYNTHETIC", "REAL_TEST", "REAL_PRODUCTION"]),
   status: RestaurantFiscalStatusSchema,
   workState: z.enum(["PENDING", "CLAIMED", "BLOCKED", "CONFIRMED", "INTERRUPTED"]).nullable().optional(),
   confirmed: z.boolean(),
@@ -70,20 +70,23 @@ export const RestaurantFiscalResultResponseSchema = z
     normalizedInvoice: RestaurantReceiptSummarySchema.nullable(),
     securityElements: RestaurantFiscalSecuritySchema.nullable(),
     resultAvailable: z.boolean(),
-    evidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST"]).nullable(),
+    evidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST", "DGI_PRODUCTION"]).nullable(),
     seller: LegalSellerAuthoritySchema.shape.seller.nullable().optional(),
   })
   .strict()
   .refine(
     (v) =>
       (!v.fiscalBinding || v.fiscalBinding.environment === v.environment) &&
-      (v.environment === "TEST" || !v.confirmed && !v.securityElements) &&
+      (v.execution !== "REAL_PRODUCTION" || v.environment === "PRODUCTION") &&
+      (v.environment !== "PRODUCTION" || !!v.fiscalBinding && (!v.confirmed || v.execution === "REAL_PRODUCTION")) &&
       v.confirmed === (v.status === "CONFIRMED") &&
       v.resultAvailable === v.confirmed &&
       (!v.normalizedInvoice || !!v.securityElements && v.normalizedInvoice.receiptId === v.invoiceId && v.normalizedInvoice.dueMinor === v.total) &&
-      (!v.securityElements || v.confirmed && v.execution === "REAL_TEST" && v.evidenceOrigin === "DGI_TEST") &&
+      (!v.securityElements || v.confirmed && (v.execution === "REAL_TEST" && v.environment === "TEST" && v.evidenceOrigin === "DGI_TEST" ||
+        v.execution === "REAL_PRODUCTION" && v.environment === "PRODUCTION" && v.evidenceOrigin === "DGI_PRODUCTION")) &&
       (!v.seller || !!v.securityElements) &&
-      (v.evidenceOrigin === (v.execution === "REAL_TEST" ? "DGI_TEST" : "SYNTHETIC")) === v.confirmed,
+      (v.confirmed ? v.evidenceOrigin === (v.execution === "REAL_TEST" ? "DGI_TEST" :
+        v.execution === "REAL_PRODUCTION" ? "DGI_PRODUCTION" : "SYNTHETIC") : v.evidenceOrigin === null),
     "Inconsistent fiscal result",
   );
 export type RestaurantFiscalSourceRequest = z.infer<

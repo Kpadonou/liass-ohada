@@ -5,6 +5,8 @@ import { RestaurantFiscalWorkRepository } from "./fiscal-work-repository";
 import { RestaurantInvoiceSourceVerifier } from "./invoice-source-verifier";
 import { projectRestaurantInvoiceV1 } from "./fiscalizable-invoice-v1";
 import { realTestFiscalService } from "./real-test-fiscal-handler";
+import { prepareBoundRestaurantWorkflow } from "./bound-fiscal-workflow";
+import type { FiscalIssuanceBinding } from "@liass-ohada/shared/shared";
 
 const knownPreReservationFailure = new Set([
   "FISCAL_SELLER_IDENTITY_INCOMPLETE", "FISCAL_SELLER_IFU_UNVERIFIED",
@@ -13,11 +15,12 @@ const knownPreReservationFailure = new Set([
 ]);
 
 type Work = { orgId: string; outletId: string; sessionId: string;
-  invoiceId: string; actorId: string; createdAt: string };
+  invoiceId: string; actorId: string; createdAt: string; fiscalBinding?: FiscalIssuanceBinding };
 
 /** One committed intent. All provider commands remain owned by the fiscal service. */
 export class RestaurantFiscalWorkProcessor {
   static async process(work: Work) {
+    if (work.fiscalBinding) return this.processBound({ ...work, fiscalBinding: work.fiscalBinding });
     if (automaticFiscalPolicy() && !automaticFiscalEligible(work)) return { state: "NOT_CLAIMED" as const };
     const claim = await RestaurantFiscalWorkRepository.claim(work);
     const context = { orgId: work.orgId, userId: work.actorId };
@@ -86,6 +89,32 @@ export class RestaurantFiscalWorkProcessor {
       console.error(JSON.stringify({ event: "FISCAL_WORK_UNRESOLVED",
         orgId: work.orgId, invoiceId: work.invoiceId, code }));
       // The fiscal attempt is authoritative. Never retry a provider mutation here.
+      return { state: "UNRESOLVED" as const };
+    }
+  }
+  private static async processBound(work: Work & { fiscalBinding: FiscalIssuanceBinding }) {
+    if (work.fiscalBinding.environment !== "TEST" || !realFiscalTestEnabled()) return { state: "NOT_CLAIMED" as const };
+    const claim = await RestaurantFiscalWorkRepository.claim(work);
+    if (!claim) return { state: "NOT_CLAIMED" as const };
+    let prepared: Awaited<ReturnType<typeof prepareBoundRestaurantWorkflow>>;
+    try {
+      prepared = await prepareBoundRestaurantWorkflow(work);
+    } catch {
+      await RestaurantFiscalWorkRepository.block(work, claim);
+      return { state: "BLOCKED" as const };
+    }
+    const { workflow, principal, identity } = prepared;
+    const attemptId = `AUTO#${work.invoiceId}`;
+    try {
+      const { state: created } = await workflow.create(principal, identity, attemptId, `${attemptId}#CREATE`);
+      if (created.status !== "CREATED") return { state: created.status };
+      await workflow.reconcile(principal, identity);
+      const { state: confirmed } = await workflow.confirm(principal, identity, `${attemptId}#CONFIRM`, { confirm: true });
+      if (confirmed.status === "CONFIRMED" && confirmed.security && confirmed.securityEvidenceOrigin === "DGI_TEST")
+        await RestaurantFiscalWorkRepository.complete(work, claim);
+      return { state: confirmed.status };
+    } catch {
+      console.error(JSON.stringify({ event: "FISCAL_WORK_UNRESOLVED", orgId: work.orgId, invoiceId: work.invoiceId }));
       return { state: "UNRESOLVED" as const };
     }
   }

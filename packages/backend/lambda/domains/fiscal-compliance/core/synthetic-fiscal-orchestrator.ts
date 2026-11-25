@@ -59,6 +59,7 @@ export class SyntheticFiscalOrchestrator {
       identity: FiscalObligationIdentity,
     ) => Promise<VerifiedFiscalPreparation>,
     private readonly real = false,
+    private readonly fiscalBinding?: FiscalAttemptState["fiscalBinding"],
   ) {}
   private async access(
     p: FiscalPrincipal,
@@ -71,14 +72,21 @@ export class SyntheticFiscalOrchestrator {
       (this.real && this.provider.kind !== "BENIN_EMECEF_TEST") ||
       !p.actorId ||
       p.orgId !== identity.orgId ||
-      identity.environment !== "TEST"
+      identity.environment !== "TEST" ||
+      (this.fiscalBinding && this.fiscalBinding.environment !== identity.environment)
     )
       throw new FiscalAttemptConflict("SCOPE_DENIED");
     await this.authorize(p, identity, action);
   }
+  private matchesBinding(state: FiscalAttemptState) {
+    const a = state.fiscalBinding, b = this.fiscalBinding;
+    return !a && !b || !!a && !!b && a.environment === b.environment &&
+      a.connectionId === b.connectionId && a.policyVersion === b.policyVersion &&
+      a.issuancePointId === b.issuancePointId;
+  }
   private intent(operation: string, commandId: string, requestDigest: string) {
     return createHash("sha256")
-      .update(JSON.stringify([operation, commandId, requestDigest]))
+      .update(JSON.stringify([operation, commandId, requestDigest, ...(this.fiscalBinding ? [this.fiscalBinding] : [])]))
       .digest("hex");
   }
   async create(
@@ -100,6 +108,7 @@ export class SyntheticFiscalOrchestrator {
     const state = await this.store.reserve({
       identity,
       attemptId,
+      ...(this.fiscalBinding ? { fiscalBinding: this.fiscalBinding } : {}),
       provider: this.provider.kind,
       ...(this.real ? { execution: "REAL_TEST" as const } : {}),
       sourceDigest: prepared.sourceDigest,
@@ -108,6 +117,7 @@ export class SyntheticFiscalOrchestrator {
         ? { fiscalDocumentType: fiscalDocumentType as "FV" | "EV" | "FA" | "EA" } : {}),
       expectedTotal: prepared.total,
     });
+    if (!this.matchesBinding(state)) throw new FiscalAttemptConflict("SCOPE_DENIED");
     const reserved = await this.store.transition(identity, state.version, {
       kind: "RESERVE_MUTATION",
       operation: "CREATE",
@@ -148,7 +158,7 @@ export class SyntheticFiscalOrchestrator {
     if (authorization?.confirm !== true)
       throw new FiscalAttemptConflict("SCOPE_DENIED");
     const state = await this.store.read(identity);
-    if (!state || (state.execution === "REAL_TEST") !== this.real || state.provider !== this.provider.kind || !state.uid)
+    if (!state || !this.matchesBinding(state) || (state.execution === "REAL_TEST") !== this.real || state.provider !== this.provider.kind || !state.uid)
       throw new FiscalAttemptConflict("UID_REQUIRED");
     const prepared = await this.prepare(p, identity);
     if (
@@ -218,7 +228,7 @@ export class SyntheticFiscalOrchestrator {
       throw new FiscalAttemptConflict("SCOPE_DENIED");
     const state = await this.store.read(identity);
     const prepared = await this.prepare(p, identity);
-    if (!state || prepared.sourceDigest !== state.sourceDigest ||
+    if (!state || !this.matchesBinding(state) || prepared.sourceDigest !== state.sourceDigest ||
       prepared.requestDigest !== state.requestDigest ||
       (this.real && (state.execution !== "REAL_TEST" || state.status !== "CREATED")))
       throw new FiscalAttemptConflict("SCOPE_DENIED");
@@ -247,7 +257,7 @@ export class SyntheticFiscalOrchestrator {
       !this.provider.verifyInvoice || !this.provider.cancelInvoice)
       throw new FiscalAttemptConflict("SCOPE_DENIED");
     const state = await this.store.read(identity);
-    if (!state || state.execution !== "REAL_TEST" || state.status !== "CREATED" ||
+    if (!state || !this.matchesBinding(state) || state.execution !== "REAL_TEST" || state.status !== "CREATED" ||
       state.provider !== this.provider.kind || !state.uid ||
       state.providerTotal === undefined)
       throw new FiscalAttemptConflict("TRANSITION_DENIED");

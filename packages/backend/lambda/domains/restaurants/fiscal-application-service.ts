@@ -124,13 +124,16 @@ export class RestaurantFiscalApplicationService {
     const intent = intentResponse.Item ? unmarshall(intentResponse.Item) : undefined;
     const fiscalBinding = !request.creditNoteId && currentSource.issuanceProvenance.verified
       ? currentSource.issuanceProvenance.evidence.fiscalBinding : undefined;
-    if (!request.creditNoteId && (fiscalBinding || intent?.fiscalBinding) &&
+    if (!request.creditNoteId && (fiscalBinding || intent?.fiscalBinding || state?.fiscalBinding) &&
       (!fiscalBinding || !intent?.fiscalBinding ||
         fiscalBinding.environment !== intent.fiscalBinding.environment ||
         fiscalBinding.connectionId !== intent.fiscalBinding.connectionId ||
         fiscalBinding.policyVersion !== intent.fiscalBinding.policyVersion ||
         fiscalBinding.issuancePointId !== intent.fiscalBinding.issuancePointId ||
-        state)) // Legacy attempts carry no policy/connection binding and cannot supply evidence here.
+        (state && (!state.fiscalBinding || state.fiscalBinding.environment !== fiscalBinding.environment ||
+          state.fiscalBinding.connectionId !== fiscalBinding.connectionId ||
+          state.fiscalBinding.policyVersion !== fiscalBinding.policyVersion ||
+          state.fiscalBinding.issuancePointId !== fiscalBinding.issuancePointId))))
       throw new AppError(409, "FISCAL_SOURCE_MISMATCH");
     if (intent && (intent.entityType !== "RESTAURANT_FISCAL_INTENT" ||
       intent.orgId !== context.orgId || intent.outletId !== request.outletId ||
@@ -187,6 +190,8 @@ export class RestaurantFiscalApplicationService {
       ? recovery.providerOperation : undefined;
     if (!this.real) throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
     const source = await this.verify(context, request);
+    if (source.issuanceProvenance.verified && source.issuanceProvenance.evidence.fiscalBinding)
+      throw new AppError(409, "FISCAL_EXECUTION_UNAVAILABLE");
     const { realConfiguration } = await this.settings(context, request, source.proof.digest);
     if (!realConfiguration || realConfiguration.operatorUserId !== context.userId ||
       realConfiguration.orgId !== context.orgId || realConfiguration.outletId !== request.outletId ||
@@ -315,6 +320,7 @@ export class RestaurantFiscalApplicationService {
       return this.confirmedResult(context, request);
     if (
       !source.issuanceProvenance.verified ||
+      source.issuanceProvenance.evidence.fiscalBinding ||
       !state ||
       state.status !== "CREATED" ||
       state.sourceDigest !== source.proof.digest

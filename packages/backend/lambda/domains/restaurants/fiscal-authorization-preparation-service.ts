@@ -33,7 +33,7 @@ const providerPayment = {
 const fail = (code: string, status = 409): never => { throw new AppError(status, code); };
 
 export class RestaurantFiscalAuthorizationPreparationService {
-  static async prepare(input: {
+  static async prepareMapping(input: {
     orgId: string; actorId: string; outletId: string; sessionId: string; invoiceId: string;
     scenarioId: string; commandId: string; automaticPolicy?: boolean;
   }) {
@@ -129,18 +129,22 @@ export class RestaurantFiscalAuthorizationPreparationService {
       aib: mapped.fiscalAdditionalTotals?.aib ?? 0,
       ts: mapped.fiscalAdditionalTotals?.ts ?? 0, total: mapped.total,
     };
+    return { prepared: prepared.preparation, mapped, mapping, groups, expectedFiscalTotals, scenarioId: request.scenarioId };
+  }
+  static async prepare(input: Parameters<typeof RestaurantFiscalAuthorizationPreparationService.prepareMapping>[0]) {
+    const { prepared, mapped, mapping, groups, expectedFiscalTotals, scenarioId } = await this.prepareMapping(input);
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
     const operations = { CREATE: 1 as const, GET: 2 as const, CONFIRM: 1 as const, CANCEL: 1 as const };
     const proof = await FiscalSourcePreparationProofService.create({
       orgId: input.orgId, outletId: input.outletId, operatorUserId: input.actorId,
       sessionId: input.sessionId, invoiceId: input.invoiceId,
       sourceDigest: mapped.sourceDigest,
-      sourceVersion: prepared.preparation.source.sourceVersion,
-      financialRevision: prepared.preparation.source.financialRevision,
-      sellerAuthorityDigest: prepared.preparation.provenance.seller.identityDigest,
-      scenarioId: request.scenarioId, fiscalGroups: groups,
+      sourceVersion: prepared.source.sourceVersion,
+      financialRevision: prepared.source.financialRevision,
+      sellerAuthorityDigest: prepared.provenance.seller.identityDigest,
+      scenarioId, fiscalGroups: groups,
       fiscalMapping: mapping, expectedFiscalTotals, operations, expiresAt,
-      commandId: request.commandId,
+      commandId: input.commandId,
     });
     return c.RestaurantFiscalAuthorizationPreparationResponseSchema.parse({
       proofId: proof.proofId, proofDigest: proof.proofDigest,

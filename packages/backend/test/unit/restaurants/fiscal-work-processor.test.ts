@@ -5,6 +5,7 @@ import { RestaurantFiscalWorkRepository } from "@/lambda/domains/restaurants/fis
 import { RestaurantInvoiceSourceVerifier } from "@/lambda/domains/restaurants/invoice-source-verifier";
 import { FiscalTestExecutionAuthorizationService } from "@/lambda/shared/services/fiscal-test-execution-authorization-service";
 import { realTestFiscalService } from "@/lambda/domains/restaurants/real-test-fiscal-handler";
+import * as boundWorkflow from "@/lambda/domains/restaurants/bound-fiscal-workflow";
 
 jest.mock("@/lambda/domains/restaurants/fiscalizable-invoice-v1", () => ({
   projectRestaurantInvoiceV1: jest.fn(() => ({})),
@@ -51,6 +52,29 @@ test("authorized work uses one stable CREATE, reconciliation and CONFIRM before 
     expect.objectContaining({ providerOperation: "RECONCILE" }));
   expect(confirmSpy).toHaveBeenCalledTimes(1);
   expect(completeSpy).toHaveBeenCalledWith(work, claim);
+});
+test("bound work runs the existing engine without resolving legacy authorization", async () => {
+  const bound = { ...work, fiscalBinding: { environment: "TEST" as const, connectionId: work.outletId, policyVersion: 2 } };
+  const workflow = {
+    create: jest.fn().mockResolvedValue({ state: { status: "CREATED" } }),
+    reconcile: jest.fn().mockResolvedValue({}),
+    confirm: jest.fn().mockResolvedValue({ state: { status: "CONFIRMED", security: { qrCode: "mock" }, securityEvidenceOrigin: "DGI_TEST" } }),
+  };
+  const prepare = jest.spyOn(boundWorkflow, "prepareBoundRestaurantWorkflow").mockResolvedValue({ workflow } as never);
+  await expect(RestaurantFiscalWorkProcessor.process(bound)).resolves.toEqual({ state: "CONFIRMED" });
+  expect(prepare).toHaveBeenCalledWith(bound);
+  expect(workflow.create).toHaveBeenCalledTimes(1);
+  expect(workflow.reconcile).toHaveBeenCalledTimes(1);
+  expect(workflow.confirm).toHaveBeenCalledTimes(1);
+  expect(completeSpy).toHaveBeenCalledWith(bound, claim);
+  expect(initiateSpy).not.toHaveBeenCalled();
+  expect(FiscalTestExecutionAuthorizationService.readBound).not.toHaveBeenCalled();
+  claimSpy.mockResolvedValueOnce(undefined);
+  await expect(RestaurantFiscalWorkProcessor.process(bound)).resolves.toEqual({ state: "NOT_CLAIMED" });
+  expect(workflow.create).toHaveBeenCalledTimes(1);
+  await expect(RestaurantFiscalWorkProcessor.process({ ...bound, fiscalBinding: { ...bound.fiscalBinding, environment: "PRODUCTION" } }))
+    .resolves.toEqual({ state: "NOT_CLAIMED" });
+  expect(prepare).toHaveBeenCalledTimes(1);
 });
 test.each(["missing authorization", "expired authorization"])("%s stays blocked without provider mutation", async () => {
   jest.spyOn(FiscalTestExecutionAuthorizationService, "readBound").mockRejectedValue(new Error("denied"));

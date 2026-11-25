@@ -2,6 +2,7 @@ import type { DynamoDBStreamEvent } from "aws-lambda";
 import { GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { z } from "zod";
+import { FiscalIssuanceBindingSchema } from "@liass-ohada/shared/shared";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
 import { restaurantsTableName } from "./restaurant-storage";
@@ -34,11 +35,11 @@ export async function processFiscalIntentStream(event: DynamoDBStreamEvent) {
       const row = intent.parse(unmarshall(response.Item));
       if (row.PK !== PK || row.PK !== K.restaurantBillPK(row.orgId, row.outletId, row.invoiceId))
         throw new Error("Fiscal intent scope mismatch");
-      // Bound intents require the upcoming shared processor. Never use the legacy TEST pilot.
-      if (Object.hasOwn(row, "fiscalBinding")) continue;
+      if (!Object.hasOwn(row, "fiscalBinding")) continue;
       await RestaurantFiscalWorkProcessor.process({
         orgId: row.orgId, outletId: row.outletId, invoiceId: row.invoiceId,
         sessionId: row.sessionId, actorId: row.actorId, createdAt: row.createdAt,
+        fiscalBinding: FiscalIssuanceBindingSchema.parse(row.fiscalBinding),
       });
     } catch {
       if (record.dynamodb?.SequenceNumber)

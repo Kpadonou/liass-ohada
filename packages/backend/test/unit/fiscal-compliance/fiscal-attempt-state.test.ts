@@ -64,6 +64,17 @@ test("first reservation is pure, scoped and serializable", () => {
   expect(JSON.parse(JSON.stringify(s))).toEqual(s);
   expect(s.obligationId).toBe(obligationIdentity(identity));
 });
+test("production obligations have isolated keys and reject a TEST binding", () => {
+  const production = { ...identity, environment: "PRODUCTION" as const };
+  const binding = { environment: "PRODUCTION" as const,
+    connectionId: "00000000-0000-4000-8000-000000000004", policyVersion: 1 };
+  const input = { ...initial(), identity: production, fiscalBinding: binding,
+    execution: "REAL_PRODUCTION" as const, provider: "BENIN_EMECEF_PRODUCTION" };
+  const state = reserveFiscalAttempt(input);
+  expect(state.obligationId).not.toBe(obligationIdentity(identity));
+  expect(state.fiscalBinding).toEqual(binding);
+  expect(() => reserveFiscalAttempt({ ...input, fiscalBinding: { ...binding, environment: "TEST" } })).toThrow();
+});
 test("effect identity excludes provider and revision", () => {
   const s = initial();
   const other = reserveFiscalAttempt({

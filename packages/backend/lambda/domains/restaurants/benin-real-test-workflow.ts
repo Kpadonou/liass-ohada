@@ -23,10 +23,12 @@ import {
 import { FiscalAttemptState } from "../fiscal-compliance/core/fiscal-attempt-state";
 import { realFiscalTestEnabled } from "../fiscal-compliance/core/test-execution";
 import { restaurantBeninPreparation } from "./benin-fiscal-request-mapper";
+import { FiscalIssuanceBindingSchema } from "@liass-ohada/shared/shared";
 const integer = z.number().int().safe().nonnegative();
 export const realTestConfigurationSchema = z
   .object({
     orgId: z.string().min(1),
+    fiscalBinding: FiscalIssuanceBindingSchema.optional(),
     operatorUserId: z.string().min(1),
     outletId: z.string().uuid(),
     sessionId: z.string().uuid(),
@@ -374,5 +376,6 @@ export function restaurantBeninRealTestWorkflow(
       return result;
     },
     true,
+    config.fiscalBinding,
   );
 }
