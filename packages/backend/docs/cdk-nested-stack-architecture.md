@@ -305,3 +305,17 @@ also change bundled Lambda code assets across existing domains: the diff include
 231 Lambda code updates (77 in Restaurants), plus seven nested-template updates.
 These are code asset changes with stable logical IDs, not function replacements
 or new domain infrastructure. No deployment is performed by this lot.
+
+## DEV Platform fiscal policy API extension
+
+`bin/fiscal-policy-api.ts` owns `LiassOhadaDevFiscalPolicyApi`. This explicitly
+approved additive DEV stack imports HTTP API `mk5jf2sco3`, its existing JWT
+authorizer, and the existing enrollment role without changing their owners.
+The two issuance-policy routes must remain excluded from PlatformFiscalityEndpoints:
+adding them there would create duplicate routes and function names. Deploy this
+entry point independently; do not reintroduce frozen parent Lambda ARN references.
+The existing API default stage auto-deploys route additions. The imported API,
+authorizer and role must outlive this stack. Any replacement of those dependencies
+requires reviewing and updating these explicit DEV bindings before deployment.
+Deleting this stack removes only its routes, integrations, permissions, functions
+and managed log groups, never fiscal policies or other DynamoDB records.

@@ -247,8 +247,6 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
       [HttpMethod.PUT, "/me/organization/profile", "update-organization-profile"],
       [HttpMethod.GET, "/me/organization/fiscality/profile", "read-fiscal-profile"],
       [HttpMethod.PUT, "/me/organization/fiscality/profile", "select-fiscal-profile"],
-      [HttpMethod.GET, "/me/organization/fiscality/issuance-policy", "read-fiscal-issuance-policy"],
-      [HttpMethod.PUT, "/me/organization/fiscality/issuance-policy", "save-fiscal-issuance-policy"],
       [
         HttpMethod.GET,
         "/me/organization/fiscality/connections",
