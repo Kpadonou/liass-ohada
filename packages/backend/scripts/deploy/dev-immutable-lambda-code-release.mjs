@@ -31,6 +31,11 @@ export const CREDIT_ORIGINAL_RELEASE = Object.freeze({
   profile: "CREDIT_ORIGINAL_SINGLE_TARGET",
   commit: "12cf9174bd50eb539071be6b824a3937c33723ed",
 });
+export const FISCAL_CALCULATION_RECONCILIATION_RELEASE = Object.freeze({
+  ...AUTOMATIC_FISCAL_RELEASE,
+  profile: "FISCAL_CALCULATION_RECONCILIATION_SINGLE_TARGET",
+  commit: "b61db6b2d3ccd69a17589e8c765c54ce1180524c",
+});
 export const AUTOMATIC_FISCAL_SUBJECT_RELEASE = Object.freeze({
   ...AUTOMATIC_FISCAL_RELEASE,
   profile: "AUTOMATIC_FISCAL_SCOPED_SUBJECT_SINGLE_TARGET",
@@ -213,7 +218,7 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
   const unifiedFiscalBinding = manifest?.releaseProfile === UNIFIED_FISCAL_BINDING_RELEASE.profile;
   const fiscalAddressAttestation = manifest?.releaseProfile === FISCAL_ADDRESS_ATTESTATION_RELEASE.profile;
   const boundReceipt = manifest?.releaseProfile === "BOUND_RECEIPT_READ_SINGLE_TARGET";
-  const singleTarget = manifest?.releaseProfile === CREDIT_ORIGINAL_RELEASE.profile ? CREDIT_ORIGINAL_RELEASE : manifest?.releaseProfile === DGI_SFE_SCENARIOS_RELEASE.profile ? DGI_SFE_SCENARIOS_RELEASE : boundReceipt ? { ...RESTAURANTS_RECEIPT_READ_RELEASE, profile: "BOUND_RECEIPT_READ_SINGLE_TARGET", commit: "d5a27a2" } : manifest?.releaseProfile === FISCAL_EXACT_UID_RELEASE.profile ? FISCAL_EXACT_UID_RELEASE : manifest?.releaseProfile === FISCAL_INTERRUPTED_RECEIPT_RELEASE.profile ? FISCAL_INTERRUPTED_RECEIPT_RELEASE : manifest?.releaseProfile === FISCAL_OPTIONAL_FIELDS_RELEASE.profile ? FISCAL_OPTIONAL_FIELDS_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_GROUPS_RELEASE.profile ? AUTOMATIC_FISCAL_GROUPS_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_SUBJECT_RELEASE.profile ? AUTOMATIC_FISCAL_SUBJECT_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_RELEASE.profile ? AUTOMATIC_FISCAL_RELEASE : fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : fiscalReceiptStatus ? FISCAL_RECEIPT_STATUS_RELEASE : receiptRead ? RESTAURANTS_RECEIPT_READ_RELEASE : fiscalGateOffRead ? FISCAL_STATUS_GATE_OFF_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
+  const singleTarget = manifest?.releaseProfile === FISCAL_CALCULATION_RECONCILIATION_RELEASE.profile ? FISCAL_CALCULATION_RECONCILIATION_RELEASE : manifest?.releaseProfile === CREDIT_ORIGINAL_RELEASE.profile ? CREDIT_ORIGINAL_RELEASE : manifest?.releaseProfile === DGI_SFE_SCENARIOS_RELEASE.profile ? DGI_SFE_SCENARIOS_RELEASE : boundReceipt ? { ...RESTAURANTS_RECEIPT_READ_RELEASE, profile: "BOUND_RECEIPT_READ_SINGLE_TARGET", commit: "d5a27a2" } : manifest?.releaseProfile === FISCAL_EXACT_UID_RELEASE.profile ? FISCAL_EXACT_UID_RELEASE : manifest?.releaseProfile === FISCAL_INTERRUPTED_RECEIPT_RELEASE.profile ? FISCAL_INTERRUPTED_RECEIPT_RELEASE : manifest?.releaseProfile === FISCAL_OPTIONAL_FIELDS_RELEASE.profile ? FISCAL_OPTIONAL_FIELDS_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_GROUPS_RELEASE.profile ? AUTOMATIC_FISCAL_GROUPS_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_SUBJECT_RELEASE.profile ? AUTOMATIC_FISCAL_SUBJECT_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_RELEASE.profile ? AUTOMATIC_FISCAL_RELEASE : fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : fiscalReceiptStatus ? FISCAL_RECEIPT_STATUS_RELEASE : receiptRead ? RESTAURANTS_RECEIPT_READ_RELEASE : fiscalGateOffRead ? FISCAL_STATUS_GATE_OFF_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
   const multiTarget = manifest?.releaseProfile === CREDIT_WORKFLOW_RELEASE.profile ? CREDIT_WORKFLOW_RELEASE : manifest?.releaseProfile === DGI_STAY_TAX_LOCAL_RELEASE.profile ? DGI_STAY_TAX_LOCAL_RELEASE : organizationProfile ? ORGANIZATION_PROFILE_RELEASE
     : attestedFiscal ? RESTAURANTS_ATTESTED_FISCAL_RELEASE
     : fiscalGetExtension ? FISCAL_GET_EXTENSION_RELEASE
