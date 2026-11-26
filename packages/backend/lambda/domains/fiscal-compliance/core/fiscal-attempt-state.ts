@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { fiscalAdjudicationAuditSchema } from "./capture-adjudication";
 import { FiscalIssuanceBindingSchema, type FiscalIssuanceBinding } from "@liass-ohada/shared/shared";
+import { fiscalCalculationReconciliationSchema } from "./fiscal-calculation-reconciliation";
 
 // Pure transition model only. D09/D15/G15 do not authorize a new writer.
 // A future approved owner must atomically compare version, reserve obligation and
@@ -91,6 +92,8 @@ export const fiscalAttemptStateSchema = z
     fiscalTotalsVerified: z.boolean().optional(),
     providerContextDigest: digest.optional(),
     fiscalTotalsDigest: digest.optional(),
+    calculationReconciliation: fiscalCalculationReconciliationSchema.optional(),
+    detailMismatchFields: z.array(z.string().min(1).max(200)).max(20).optional(),
     providerTotal: z.number().int().safe().optional(),
     security: securitySchema.optional(),
     securityEvidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST", "DGI_PRODUCTION"]).optional(),
@@ -125,7 +128,9 @@ export const fiscalAttemptStateSchema = z
       ].includes(s.status) &&
         !s.uid) ||
       (s.status === "CONFIRMED" &&
-        (!s.security || s.providerTotal !== s.expectedTotal)) ||
+        (!s.security || s.providerTotal !== s.expectedTotal ||
+          (s.execution === "REAL_TEST" && s.calculationReconciliation?.status === "MISMATCH") ||
+          !!s.detailMismatchFields?.length)) ||
       (s.status.endsWith("_IN_FLIGHT") &&
         !s.commands.some(
           (c) =>
@@ -216,6 +221,7 @@ const eventSchema = z.discriminatedUnion("kind", [
       fiscalTotalsVerified: z.boolean().optional(),
       providerContextDigest: digest.optional(),
       fiscalTotalsDigest: digest.optional(),
+      calculationReconciliation: fiscalCalculationReconciliationSchema.optional(),
     })
     .strict(),
   z
@@ -245,6 +251,8 @@ const eventSchema = z.discriminatedUnion("kind", [
     .strict(),
   z.object({ kind: z.literal("DEFINITE_FAILURE"), commandId: id }).strict(),
   z.object({ kind: z.literal("RECOVER_INTERRUPTED") }).strict(),
+  z.object({ kind: z.literal("DETAIL_RECONCILIATION_MISMATCH"),
+    mismatchFields: z.array(z.string().min(1).max(200)).min(1).max(20) }).strict(),
   z
     .object({
       kind: z.literal("ADJUDICATED_CONFIRMED"),
@@ -292,7 +300,9 @@ export function transitionFiscalAttempt(
     if (
       e.operation === "CONFIRM" &&
       (current.providerTotal !== current.expectedTotal ||
-        ((current.execution === "REAL_TEST" || current.execution === "REAL_PRODUCTION") && !current.fiscalTotalsVerified))
+        ((current.execution === "REAL_TEST" || current.execution === "REAL_PRODUCTION") &&
+          (!current.fiscalTotalsVerified || current.calculationReconciliation?.status !== "MATCH" ||
+            !!current.detailMismatchFields?.length)))
     )
       deny();
     if (e.diagnosticReference)
@@ -307,6 +317,10 @@ export function transitionFiscalAttempt(
     });
     next.activeCommandId = e.commandId;
     next.status = `${e.operation}_IN_FLIGHT`;
+  } else if (e.kind === "DETAIL_RECONCILIATION_MISMATCH") {
+    if (current.status !== "CREATED" || current.execution !== "REAL_TEST" || !current.uid) deny();
+    next.detailMismatchFields = e.mismatchFields;
+    next.fiscalTotalsVerified = false;
   } else if (e.kind === "RECOVER_INTERRUPTED") {
     if (!current.status.endsWith("_IN_FLIGHT")) deny();
     next.status = "UNKNOWN_OUTCOME";
@@ -364,6 +378,7 @@ export function transitionFiscalAttempt(
       if (e.fiscalTotalsVerified !== undefined)
         next.fiscalTotalsVerified = e.fiscalTotalsVerified;
       if (e.fiscalTotalsDigest) next.fiscalTotalsDigest = e.fiscalTotalsDigest;
+      if (e.calculationReconciliation) next.calculationReconciliation = e.calculationReconciliation;
       if (e.providerContextDigest)
         next.providerContextDigest = e.providerContextDigest;
       next.status = "CREATED";

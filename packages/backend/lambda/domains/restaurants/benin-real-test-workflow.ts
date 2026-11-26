@@ -24,6 +24,7 @@ import { FiscalAttemptState } from "../fiscal-compliance/core/fiscal-attempt-sta
 import { realFiscalTestEnabled } from "../fiscal-compliance/core/test-execution";
 import { restaurantBeninPreparation } from "./benin-fiscal-request-mapper";
 import { FiscalIssuanceBindingSchema } from "@liass-ohada/shared/shared";
+import { reconcileFiscalCalculations } from "../fiscal-compliance/core/fiscal-calculation-reconciliation";
 const integer = z.number().int().safe().nonnegative();
 export const realTestConfigurationSchema = z
   .object({
@@ -129,6 +130,7 @@ export function restaurantBeninRealTestWorkflow(
         payload.invoice,
         payload.expected,
       );
+      const calculationReconciliation = reconcileFiscalCalculations(config.expectedFiscalTotals, created);
       // Keep UID when a detailed fiscal total differs. This does not permit confirmation.
       return {
         ...created,
@@ -136,14 +138,23 @@ export function restaurantBeninRealTestWorkflow(
           canonical(["TEST", config.ifu, config.nim]),
         ),
         fiscalTotalsDigest: hash(canonical(config.expectedFiscalTotals)),
-        reconciled:
-          created.reconciled &&
-          Object.entries(config.expectedFiscalTotals).every(
-            ([key, value]) =>
-              created[key as keyof typeof config.expectedFiscalTotals] ===
-              value,
-          ),
+        calculationReconciliation,
+        reconciled: created.reconciled && calculationReconciliation.status === "MATCH",
       };
+    },
+    async verifyBeforeConfirm(uid, prepared) {
+      const pending = z.object({ invoice: InvoiceRequestDataDtoSchema,
+        expected: z.object({ total: integer, itemTotals: z.array(integer) }).strict() }).strict().parse(prepared.payload);
+      await verifyContext();
+      try {
+        await adapter.verifyDurableInvoice(input, uid, pending.invoice, pending.expected);
+        return [];
+      } catch (error) {
+        if (error instanceof BeninEMecefConnectorError &&
+          error.reconciliationDiagnostic?.classification === "INVOICE_DETAIL_MISMATCH")
+          return error.reconciliationDiagnostic.mismatchFields;
+        throw error;
+      }
     },
     async confirmInvoice(uid, state, prepared) {
       if (
@@ -166,9 +177,6 @@ export function restaurantBeninRealTestWorkflow(
       const confirmationStarted = performance.now();
       try {
         await verifyContext();
-        const pending = z.object({ invoice: InvoiceRequestDataDtoSchema,
-          expected: z.object({ total: integer, itemTotals: z.array(integer) }).strict() }).strict().parse(prepared.payload);
-        await adapter.verifyDurableInvoice(input, uid, pending.invoice, pending.expected);
         const result = await adapter.confirmDurableInvoice(input, state);
         if (result.nim !== config.nim) {
           provider.diagnostic = {

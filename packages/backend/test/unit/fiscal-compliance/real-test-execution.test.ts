@@ -530,6 +530,8 @@ test("detailed tax mismatch retains UID and blocks confirmation", async () => {
     status: "CREATED",
     uid: "provider-uid",
     fiscalTotalsVerified: false,
+    calculationReconciliation: { status: "MISMATCH", phase: "CREATE",
+      differences: [{ field: "vab", expected: 305, actual: 999 }] },
   });
   await expect(
     flow.confirm(principal, identity, "confirm", { confirm: true }),
@@ -537,6 +539,23 @@ test("detailed tax mismatch retains UID and blocks confirmation", async () => {
   expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(
     0,
   );
+});
+test("provider GET field mismatch is durable before any CONFIRM reservation", async () => {
+  const { flow, transport } = setup();
+  await create(flow);
+  transport.mockImplementation(async request => ({ status: 200, body: JSON.stringify(
+    request.url.includes("/api/invoice/provider-uid")
+      ? { ...payload.invoice, items: [{ ...payload.invoice.items[0], taxGroup: "A" }] }
+      : { status: true, ifu: config.ifu, nim: config.nim },
+  ) }));
+  await expect(flow.confirm(principal, identity, "confirm", { confirm: true }))
+    .rejects.toThrow();
+  expect(await new FiscalAttemptStore().read(identity)).toMatchObject({
+    status: "CREATED", uid: "provider-uid", fiscalTotalsVerified: false,
+    detailMismatchFields: ["items[0].taxGroup"],
+  });
+  expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(0);
+  expect(transport.mock.calls.filter(([r]) => r.method === "POST")).toHaveLength(1);
 });
 test("authorized reconciliation verifies the owned pending UID without changing durable state", async () => {
   const { flow, transport } = setup();
@@ -711,25 +730,16 @@ test("security from a different NIM is captured but never certified", async () =
   ).toBeUndefined();
 });
 
-test("preflight failure records that confirmation was not sent and still forbids redispatch", async () => {
+test("read-only preflight failure leaves CREATED UID without a CONFIRM reservation", async () => {
   const { flow, transport } = setup();
   await create(flow);
   transport.mockImplementation(async () => ({ status: 401, body: "{}" }));
-  await flow.confirm(principal, identity, "confirm", { confirm: true });
+  await expect(flow.confirm(principal, identity, "confirm", { confirm: true })).rejects.toThrow();
   expect(await new FiscalAttemptStore().read(identity)).toMatchObject({
-    status: "UNKNOWN_OUTCOME",
-    diagnostic: {
-      mutationMayHaveExecuted: false,
-      category: "AUTHENTICATION",
-      httpStatus: 401,
-    },
+    status: "CREATED", uid: "provider-uid", fiscalTotalsVerified: true,
   });
   expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(
     0,
   );
-  const count = transport.mock.calls.length;
-  await expect(
-    flow.confirm(principal, identity, "confirm", { confirm: true }),
-  ).rejects.toThrow();
-  expect(transport).toHaveBeenCalledTimes(count);
+  expect(transport.mock.calls.filter(([r]) => r.method === "POST")).toHaveLength(1);
 });

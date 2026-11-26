@@ -1,4 +1,5 @@
 import { realFiscalTestEnabled } from "./test-execution";
+import { fiscalCalculationReconciliationSchema, type FiscalCalculationReconciliation } from "./fiscal-calculation-reconciliation";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { FiscalAttemptStore } from "../persistence/fiscal-attempt-store";
@@ -33,7 +34,9 @@ export interface MockFiscalProvider {
   diagnostic?: FiscalAttemptState["diagnostic"];
   createInvoice(
     preparation: VerifiedFiscalPreparation,
-  ): Promise<{ uid: string; total: number; reconciled: boolean; fiscalTotalsDigest?: string; providerContextDigest?: string }>;
+  ): Promise<{ uid: string; total: number; reconciled: boolean; fiscalTotalsDigest?: string; providerContextDigest?: string;
+    calculationReconciliation?: FiscalCalculationReconciliation }>;
+  verifyBeforeConfirm?(uid: string, preparation: VerifiedFiscalPreparation): Promise<readonly string[]>;
   confirmInvoice(
     uid: string,
     reservation?: FiscalAttemptState,
@@ -134,6 +137,7 @@ export class SyntheticFiscalOrchestrator {
           reconciled: this.real ? z.boolean() : z.literal(true),
           providerContextDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
           fiscalTotalsDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+          calculationReconciliation: fiscalCalculationReconciliationSchema.optional(),
         })
         .parse(created);
       if (!this.real && valid.total !== prepared.total) throw new Error("TOTAL_MISMATCH");
@@ -142,7 +146,8 @@ export class SyntheticFiscalOrchestrator {
         commandId,
         uid: valid.uid,
         total: valid.total,
-        ...(this.real ? { fiscalTotalsVerified: valid.reconciled, fiscalTotalsDigest: valid.fiscalTotalsDigest, providerContextDigest: valid.providerContextDigest } : {}),
+        ...(this.real ? { fiscalTotalsVerified: valid.reconciled, fiscalTotalsDigest: valid.fiscalTotalsDigest,
+          providerContextDigest: valid.providerContextDigest, calculationReconciliation: valid.calculationReconciliation } : {}),
       });
     } catch (error) {
       return this.uncertain(identity, reserved.state.version, commandId, error);
@@ -168,6 +173,15 @@ export class SyntheticFiscalOrchestrator {
       prepared.total !== state.expectedTotal
     )
       throw new FiscalAttemptConflict("SCOPE_DENIED");
+    if (this.real && state.status === "CREATED" && this.provider.verifyBeforeConfirm && state.fiscalTotalsVerified) {
+      const mismatchFields = await this.provider.verifyBeforeConfirm(state.uid, prepared);
+      if (mismatchFields.length) {
+        await this.store.transition(identity, state.version, {
+          kind: "DETAIL_RECONCILIATION_MISMATCH", mismatchFields: [...mismatchFields].slice(0, 20),
+        });
+        throw new FiscalAttemptConflict("TRANSITION_DENIED");
+      }
+    }
     const reference = createHash("sha256").update(JSON.stringify([state.obligationId, state.attemptId, commandId, state.uid])).digest("hex");
     const reserved = await this.store.transition(identity, state.version, {
       kind: "RESERVE_MUTATION",
