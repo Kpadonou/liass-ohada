@@ -140,7 +140,7 @@ import { restaurantPrice } from '../utils/restaurant-money';
               <div class="flex min-w-0 items-start justify-between gap-3">
                 <p class="min-w-0 break-words text-sm">
                   <span class="font-medium"
-                    >{{ line.snapshot.quantity }} × {{ line.snapshot.name }}@if (line.snapshot.fiscalTreatment; as treatment) { ({{ treatment.effectiveGroup }}) }</span
+                    >{{ line.snapshot.quantity }} × {{ line.snapshot.name }}{{ line.snapshot.fiscalTreatment ? ' (' + line.snapshot.fiscalTreatment.effectiveGroup + ')' : '' }}</span
                   >
                 </p>
                 <span class="shrink-0 text-sm font-semibold tabular-nums">{{
