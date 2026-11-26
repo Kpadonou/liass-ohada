@@ -87,6 +87,13 @@ describe('Receipt presentation and complete native print', () => {
       (page.parts[0].content.lines[0].snapshot.specificTaxMinor = 100);
     page.parts[0].content.kind === 'COMMERCIAL' &&
       (page.parts[0].content.lines[0].snapshot.specificTaxKind = 'SPECIFIC');
+    if (page.parts[0].content.kind === 'COMMERCIAL') {
+      page.parts[0].content.lines[0].snapshot.fiscalTreatment = {
+        country: 'BJ', catalogGroup: 'A', effectiveGroup: 'B', regime: 'ORDINARY_VAT',
+        regimeRevision: rid(700), policyId: 'BJ-RESTO-TTC', policyVersion: 2,
+        rateBasisPoints: 1800, rounding: 'HALF_UP_LINE',
+      };
+    }
     api.page.mockResolvedValue(page);
     fiscalApi.result.mockResolvedValue({
       invoiceId: receiptSummary().receiptId,
@@ -114,6 +121,7 @@ describe('Receipt presentation and complete native print', () => {
     await vi.waitFor(() => {
       f.detectChanges();
       expect(f.nativeElement.textContent).toContain('TEST-CODE');
+      expect(f.nativeElement.textContent).toContain('Poisson grillé accompagné d’attiéké (B)');
       expect(f.nativeElement.querySelector('img')?.src).toMatch(/^data:image\/png/);
     });
     for (const paper of ['thermal', 'a4'] as const) {
@@ -124,8 +132,15 @@ describe('Receipt presentation and complete native print', () => {
       expect(document.textContent).toContain('Client Test');
       expect(document.textContent).toContain('1234567890123');
       expect(document.textContent).toContain('Taxe spécifique');
+      expect(document.textContent).toContain('Poisson grillé accompagné d’attiéké (B)');
       expect(document.querySelector('img')?.src).toMatch(/^data:image\/png/);
     }
+  });
+  it('keeps a historical receipt line without a frozen fiscal classification unlabeled', async () => {
+    const f = create();
+    await loaded(f);
+    expect(f.nativeElement.textContent).toContain('Poisson grillé accompagné d’attiéké');
+    expect(f.nativeElement.textContent).not.toContain('Poisson grillé accompagné d’attiéké (');
   });
   it('shows an uncertain outcome without fiscal evidence or a QR', async () => {
     fiscalApi.result.mockResolvedValue({
