@@ -14,9 +14,13 @@ Do not deploy to PROD, mutate PROD data, run destructive PROD tests, or modify P
 
 ## Local tooling
 
-This project uses Node.js 22 through nvm. Before checking Node, npm or npx availability or running npm scripts in a new shell, set `NVM_DIR="$HOME/.nvm"`, source `"$NVM_DIR/nvm.sh"`, and run `nvm use 22`. Do not reinstall Node or change the global PATH based on a shell that has not initialized nvm.
+`.nvmrc` is the canonical local Node.js version reference. Before checking Node, npm or npx availability or running npm scripts in a new shell, set `NVM_DIR="$HOME/.nvm"`, source `"$NVM_DIR/nvm.sh"`, and run `nvm use` from the repository root. Do not reinstall Node or change the global PATH based on a shell that has not initialized nvm.
 
 Prefer existing repository scripts, connected capabilities and focused CLI tools for the task. Add an external plugin or MCP server only when its distinct capability is needed; keep tool access and fetched context narrow.
+
+## Technology upgrade governance
+
+Review supported runtime and dependency versions at least monthly against official compatibility and end-of-support schedules; triage critical/high advisories promptly. Prioritize security patches, then supported minor updates; plan LTS and major migrations before support ends. Make each upgrade a scoped change with peer-dependency and lockfile review, focused tests, build and compatibility checks, DEV runtime/browser validation where relevant, and a rollback path. Apply CDK/resource, accounting, fiscal, security and Product Owner acceptance gates already defined here and in the relevant skills; do not treat a passing build as deployment authorization. Record deferred updates and blockers without silently widening version ranges or disabling safeguards.
 
 ## Frontend design and acceptance
 
