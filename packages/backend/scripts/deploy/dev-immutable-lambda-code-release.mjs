@@ -157,6 +157,19 @@ export const CREDIT_WORKFLOW_RELEASE = Object.freeze({
   ]),
 });
 
+export const RESTAURANTS_SPECIFIC_TAX_RELEASE = Object.freeze({
+  profile: "RESTAURANTS_SPECIFIC_TAX_SIX_TARGETS",
+  commit: "d3c0f7a89fabdff968338ed78cb1f2f7e08e93ed",
+  functions: Object.freeze([
+    Object.freeze({ functionName: "liass-ohada-dev-restaurants-browse-menu-items", logicalId: "RestaurantsModuleRestaurantsbrowsemenuitemsGETrestaurantsoutletsoutletIdmenuitemsA246C3AC" }),
+    Object.freeze({ functionName: "liass-ohada-dev-restaurants-get-menu-item", logicalId: "RestaurantsModuleRestaurantsgetmenuitemGETrestaurantsoutletsoutletIdmenucategoriescategoryIditemsitemIdE9CBF85A" }),
+    Object.freeze({ functionName: "liass-ohada-dev-restaurants-create-menu-item", logicalId: "RestaurantsModuleRestaurantscreatemenuitemPOSTrestaurantsoutletsoutletIdmenucategoriescategoryIditems97D355D4" }),
+    Object.freeze({ functionName: "liass-ohada-dev-restaurants-update-menu-item", logicalId: "RestaurantsModuleRestaurantsupdatemenuitemPATCHrestaurantsoutletsoutletIdmenucategoriescategoryIditemsitemId2074C580" }),
+    Object.freeze({ functionName: "liass-ohada-dev-restaurants-list-menu-item", logicalId: "RestaurantsModuleRestaurantslistmenuitemGETrestaurantsoutletsoutletIdmenucategoriescategoryIditems2FE6FB96" }),
+    Object.freeze({ functionName: "liass-ohada-dev-restaurants-submit-order", logicalId: "RestaurantsModuleRestaurantssubmitorderPOSTrestaurantsoutletsoutletIdordersorderIdsubmitD12CB000" }),
+  ]),
+});
+
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..", "..", "..", "..");
 const stable = (value) => {
@@ -219,7 +232,7 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
   const fiscalAddressAttestation = manifest?.releaseProfile === FISCAL_ADDRESS_ATTESTATION_RELEASE.profile;
   const boundReceipt = manifest?.releaseProfile === "BOUND_RECEIPT_READ_SINGLE_TARGET";
   const singleTarget = manifest?.releaseProfile === FISCAL_CALCULATION_RECONCILIATION_RELEASE.profile ? FISCAL_CALCULATION_RECONCILIATION_RELEASE : manifest?.releaseProfile === CREDIT_ORIGINAL_RELEASE.profile ? CREDIT_ORIGINAL_RELEASE : manifest?.releaseProfile === DGI_SFE_SCENARIOS_RELEASE.profile ? DGI_SFE_SCENARIOS_RELEASE : boundReceipt ? { ...RESTAURANTS_RECEIPT_READ_RELEASE, profile: "BOUND_RECEIPT_READ_SINGLE_TARGET", commit: "d5a27a2" } : manifest?.releaseProfile === FISCAL_EXACT_UID_RELEASE.profile ? FISCAL_EXACT_UID_RELEASE : manifest?.releaseProfile === FISCAL_INTERRUPTED_RECEIPT_RELEASE.profile ? FISCAL_INTERRUPTED_RECEIPT_RELEASE : manifest?.releaseProfile === FISCAL_OPTIONAL_FIELDS_RELEASE.profile ? FISCAL_OPTIONAL_FIELDS_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_GROUPS_RELEASE.profile ? AUTOMATIC_FISCAL_GROUPS_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_SUBJECT_RELEASE.profile ? AUTOMATIC_FISCAL_SUBJECT_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_RELEASE.profile ? AUTOMATIC_FISCAL_RELEASE : fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : fiscalReceiptStatus ? FISCAL_RECEIPT_STATUS_RELEASE : receiptRead ? RESTAURANTS_RECEIPT_READ_RELEASE : fiscalGateOffRead ? FISCAL_STATUS_GATE_OFF_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
-  const multiTarget = manifest?.releaseProfile === CREDIT_WORKFLOW_RELEASE.profile ? CREDIT_WORKFLOW_RELEASE : manifest?.releaseProfile === DGI_STAY_TAX_LOCAL_RELEASE.profile ? DGI_STAY_TAX_LOCAL_RELEASE : organizationProfile ? ORGANIZATION_PROFILE_RELEASE
+  const multiTarget = manifest?.releaseProfile === RESTAURANTS_SPECIFIC_TAX_RELEASE.profile ? RESTAURANTS_SPECIFIC_TAX_RELEASE : manifest?.releaseProfile === CREDIT_WORKFLOW_RELEASE.profile ? CREDIT_WORKFLOW_RELEASE : manifest?.releaseProfile === DGI_STAY_TAX_LOCAL_RELEASE.profile ? DGI_STAY_TAX_LOCAL_RELEASE : organizationProfile ? ORGANIZATION_PROFILE_RELEASE
     : attestedFiscal ? RESTAURANTS_ATTESTED_FISCAL_RELEASE
     : fiscalGetExtension ? FISCAL_GET_EXTENSION_RELEASE
     : unifiedFiscalBinding ? UNIFIED_FISCAL_BINDING_RELEASE
