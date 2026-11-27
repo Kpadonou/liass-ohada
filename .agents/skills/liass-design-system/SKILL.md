@@ -298,6 +298,8 @@ Existing approved components take precedence over external inspiration. Do not c
 
 ## Implementation workflow
 
+For browser validation that benefits from reproducible navigation, screenshots, console inspection, responsive viewport checks, or interaction testing, use the installed `playwright-cli` in an isolated DEV session when existing browser capabilities are insufficient. Keep captured data local and free of credentials, customer data, and fiscal secrets. This tool choice does not change the required design gates or Product Owner visual acceptance; routine documentation or non-UI tasks do not need browser automation.
+
 1. Read `AGENTS.md` and `SPEC.md` when the UI task touches architecture, domains, or business workflow.
 2. Inspect existing nearby UI, shared `liass-*` components, Tailwind config/theme CSS, Angular Material theme files, and logo/assets.
 3. Load the relevant design-system references from the priority list.

@@ -62,6 +62,8 @@ Before adding backend indexes, projections, search infrastructure or specialized
 
 ## Implementation workflow
 
+For a version-specific external library question that existing repository evidence does not answer, use the installed `ctx7` CLI for a focused documentation lookup. Check the resolved library/version and official source; send no proprietary code, credentials, customer data, or fiscal secrets. Do not query automatically for every task or enable a persistent documentation server.
+
 1. Read `SPEC.md`, `AGENTS.md`, and the relevant runtime and infrastructure owners.
 2. State the classification, owner, access patterns, dependencies, and compatibility constraints.
 3. Apply the checklist and use every specialized skill triggered by the change.
