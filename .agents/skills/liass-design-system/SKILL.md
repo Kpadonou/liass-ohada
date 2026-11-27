@@ -13,7 +13,7 @@ Use this skill for UI design, UI review, frontend page implementation, shell/nav
 
 ## Mandatory behavior
 
-The global mandatory reuse decision hierarchy, UI REUSE PREFLIGHT and UI REUSE REPORT/completion gates live in root `AGENTS.md` and apply to all current/future domains and products. Complete that preflight before frontend implementation. This skill supplies detailed examples, not a parallel exception to the global contract. Shared application buttons and Material interaction controls are selected deliberately from the applicable canonical reference; shared controls must not be assumed to have identical heights.
+This skill owns the mandatory reuse decision hierarchy, UI REUSE PREFLIGHT, UI REUSE REPORT and completion gates for all current and future frontend domains and products. Root `AGENTS.md` activates the skill and preserves the cross-cutting acceptance boundary. Shared application buttons and Material interaction controls are selected deliberately from the applicable canonical reference; shared controls must not be assumed to have identical heights.
 
 1. Preserve the approved Liass-OHADA visual baseline, architecture and frontend conventions. Do not premiumize, restyle or re-theme existing components unless the user explicitly requests that visual change.
 2. Reuse existing shared `liass-*` UI components before creating local UI patterns.
@@ -82,9 +82,28 @@ Icons communicate action, status, object type, navigation or significant state; 
 
 For repeated interactions, first inspect shared implementations. Reuse the existing primitive/composition; extend an almost-fitting primitive for a generic capability, or create a shared primitive only for a demonstrated recurring cross-domain gap. Do not build independent feature versions. There is currently no universal ManagementToolbar, DetailDrawer or row-action component; reuse composition and Material controls without documenting nonexistent APIs.
 
+### UI REUSE PREFLIGHT — mandatory before frontend implementation
+
+Complete in task analysis; no separate file is required:
+
+1. Canonical reference screen: exact file/component.
+2. Shared components to reuse.
+3. Global styles/tokens to reuse.
+4. Formatters and locale/timezone policies.
+5. Canonical responsive composition/reference.
+6. Local visual deviations and justification.
+7. Missing capability: `REUSE / EXTEND / CREATE SHARED / DOMAIN-LOCAL`.
+8. Complete INTERACTION PREFLIGHT before implementing new frontend interactions.
+
+Reuse an applicable shared primitive first; otherwise follow a canonical composition. Extend a shared primitive only for generic capability, create one only for a demonstrated recurring cross-domain gap, and keep domain-specific content local. Do not build page-local equivalents of applicable shared components. Where applicable, use `LiassPageHeaderComponent`, `LiassCardComponent`, `LiassButtonComponent`, `LiassStatusChipComponent`, `LiassSkeletonComponent`, `LiassTablePreferencesDialogComponent`, `LiassSearchableSelectComponent`, established dialogs, and `liass-data-table`. Tables use central table tokens and tabular alignment for financial values. Initial loading uses shared skeleton treatment; safe same-context cached content stays visible during background refresh. Empty/error states stay inside the established surface.
+
+Inspect `packages/frontend/src/app/domains/restaurants/feature/restaurant-inventory.page.html` and `restaurant-inventory.page.ts`, `packages/frontend/src/app/domains/accounting/feature/journals/journals.page.html`, `packages/frontend/src/app/domains/accounting/feature/journals/create-journal-dialog.component.html`, `packages/frontend/src/app/domains/accounting/feature/third-parties/third-parties.page.html`, `packages/frontend/src/app/shared/ui/`, `packages/frontend/src/styles.css`, and `packages/frontend/src/material-theme.scss` as applicable. These are composition precedents, not templates to copy wholesale. Use `packages/frontend/src/app/shared/utils/exact-money-display.ts` for its decimal-string contract; counts remain counts, dates follow active language and domain timezone, and enums are translated. Where no generic formatter exists, use an explicit application/domain locale and timezone policy.
+
+Classify every local override of standard colors, borders, states, sizing, spacing, density, typography, surfaces or actions as `JUSTIFIED DOMAIN-SPECIFIC` with a reason or `REMOVE / USE CANONICAL`. Unjustified overrides fail completion.
+
 ### INTERACTION PREFLIGHT — mandatory before new frontend interactions
 
-Complete alongside root AGENTS.md's UI REUSE PREFLIGHT in task analysis, without a separate report file:
+Complete alongside UI REUSE PREFLIGHT in task analysis, without a separate report file:
 
 1. Page responsibility: one sentence.
 2. Primary user role: role.
@@ -131,10 +150,14 @@ Then report **LIASS UX PATTERNS: PASS / FAIL**. Any failed check fails this gate
 
 Include the per-check completion results above, then report:
 
+- Canonical reference; shared components; global styles/tokens; formatter/locale/timezone policy; shared extensions; new shared components; page-local UI; every local override and justification.
+- Technical frontend validation: PASS / FAIL.
 - LIASS UI REUSE: PASS / FAIL.
 - LIASS UX PATTERNS: PASS / FAIL.
 - LIASS DESIGN CONTRACT: PASS / FAIL.
 - Product Owner visual validation: PENDING / PASS / FAIL.
+
+Overall implementation PASS requires LIASS UI REUSE, LIASS UX PATTERNS and LIASS DESIGN CONTRACT all PASS. Product Owner visual validation remains separate and pending until performed; tests and builds never establish it.
 
 ## Collection presentation
 

@@ -12,90 +12,17 @@ Report technical validation, Codex runtime validation, and Product Owner manual 
 
 Do not deploy to PROD, mutate PROD data, run destructive PROD tests, or modify PROD infrastructure without explicit Product Owner authorization. Task-specific restrictions still apply.
 
-## Mandatory global Liass UI reuse and design contract
+## Local tooling
 
-Applies to ALL frontend work: Accounting, Restaurants, Sales, Treasury, Project Accounting, every existing domain, new feature, UI bug fix, refactor, future product and vertical. Historical Accounting markup is evidence of composition, not an exemption or blanket approval of local styling.
+This project uses Node.js 22 through nvm. Before checking Node, npm or npx availability or running npm scripts in a new shell, set `NVM_DIR="$HOME/.nvm"`, source `"$NVM_DIR/nvm.sh"`, and run `nvm use 22`. Do not reinstall Node or change the global PATH based on a shell that has not initialized nvm.
 
-### Canonical references — inspect first
+Prefer existing repository scripts, connected capabilities and focused CLI tools for the task. Add an external plugin or MCP server only when its distinct capability is needed; keep tool access and fetched context narrow.
 
-- Restaurants: `packages/frontend/src/app/domains/restaurants/feature/restaurant-inventory.page.html` and `restaurant-inventory.page.ts`.
-- Accounting: `packages/frontend/src/app/domains/accounting/feature/journals/journals.page.html`, `journals/create-journal-dialog.component.html`, and `third-parties/third-parties.page.html`.
-- Shared primitives: `packages/frontend/src/app/shared/ui/`.
-- Visual system: `packages/frontend/src/styles.css` and `packages/frontend/src/material-theme.scss`.
-- Detailed guidance: `.agents/skills/liass-design-system/SKILL.md` and its references.
+## Frontend design and acceptance
 
-References are architectural starting points: reuse compatible composition and primitives, not entire domain pages.
+Use `.agents/skills/liass-design-system/SKILL.md` for every frontend UI implementation or review, including the mandatory UI REUSE PREFLIGHT, INTERACTION PREFLIGHT, UI REUSE REPORT, UX INTERACTION REPORT, presentation contract, and completion gates. Its canonical references, shared primitives, tokens, formatting, interaction rules, responsive checks and justified-override rules apply across all domains. Do not introduce a page-local equivalent of an applicable shared primitive.
 
-### Reuse before creation
-
-For each requirement: reuse an applicable canonical shared component; otherwise follow an existing canonical composition; extend an almost-fitting component only for a generic capability; create a shared primitive only for a demonstrated recurring cross-domain gap; keep genuinely domain-specific content local. Never implement a page-local equivalent of an applicable shared component. Missing infrastructure does not authorize repeated independent visual variants.
-
-Canonical primitives where applicable: `LiassPageHeaderComponent`, `LiassCardComponent`, `LiassButtonComponent`, `LiassStatusChipComponent`, `LiassSkeletonComponent`, `LiassTablePreferencesDialogComponent`, `LiassSearchableSelectComponent`, existing confirmation/dialog primitives, global `liass-data-table`, central tokens and the Material theme bridge. Do not reproduce their base responsibilities locally.
-
-### Composition and presentation
-
-Standard management composition: shared page header → optional concise context/summary → management card/surface containing search/filter/action toolbar and contextual states → desktop table / dedicated mobile records → contextual drawer when needed. No generic management card grids, giant sparse containers, oversized banners or pseudo-controls. Use `LiassPageHeaderComponent` and `LiassCardComponent` when their standard responsibilities fit.
-
-Tables MUST use `liass-data-table` and central table tokens for headers, rows, alternating rows, hover, selection, borders/separators and density. Align financial columns consistently with tabular numbers; reuse canonical row actions and shared column preferences where applicable. Localize domain meaning to values/status/actions rather than recoloring whole rows. Mobile must not squeeze an unusable desktop table.
-
-There is no universal ManagementToolbar or DetailDrawer component. Follow accepted composition: search/filters/preferences grouped left, management actions separated right; bounded search, compatible control density, coherent alignment/gaps and responsive wrapping. Use Material drawers with bounded desktop/narrow-screen sizing and grouped details; do not duplicate entire workspaces below collections. Use established Material dialogs: title → domain content/form → validation/status → action footer. Domain body content stays local; reuse existing confirmation chrome where applicable.
-
-Use `LiassButtonComponent` for standard application actions where its model fits; use established Material controls for forms, dialogs, menus and selects. Choose deliberately from the reference interaction group rather than mixing arbitrarily. Shared controls do not all have equal heights: choose a compatible canonical composition, not one-off sizing fixes.
-
-Base colors, surfaces, borders, typography, status and spacing MUST use shared components, semantic utilities/tokens and the Material bridge. Do not substitute arbitrary hex/RGB or gray/slate utilities where semantic tokens exist. Reuse shared padding/density and reference spacing; do not establish page-specific spacing systems. Closed/inactive remains neutral unless business meaning warrants another tone; business variance is not automatically an application error.
-
-Initial loading uses shared skeleton/loading treatment; safe same-context cached content remains visible during background refresh. Empty/errors remain contextual within established surfaces. Preserve TanStack ownership, cache reuse, authorization/context isolation and performance contracts.
-
-Responsive contract: account for ~1440 desktop density, ~900 coherent wrapping/table usability, and ~390 dedicated information hierarchy with readable labels/reachable actions. Structure is required during implementation; browser/manual acceptance is reported separately.
-
-Formatting: use `packages/frontend/src/app/shared/utils/exact-money-display.ts` where its canonical decimal-string input contract applies; counts remain integer/count values without currency. Dates follow active language and contractual domain timezone. Translate enums. Where no generic formatter exists, local formatting is allowed with explicit application/domain locale and timezone policy.
-
-Every local override of standard colors, borders, states, sizing, spacing, density, typography, surface or action appearance must be classified `JUSTIFIED DOMAIN-SPECIFIC` with a reason; otherwise `REMOVE / USE CANONICAL`. Unjustified overrides fail completion.
-
-### Global interaction and simplicity contract — LIASS-UX-PATTERNS-1
-
-Applies to all current and future Liass frontend domains, products and verticals alongside LIASS-UI-GOVERNANCE-1. Simple first: interfaces must feel direct and lightweight despite domain complexity. Use concise labels, contextual actions, progressive disclosure and clear primary/secondary/detail hierarchy; avoid repeated text, decorative clutter and a generic dense ERP appearance while preserving useful table density.
-
-One row/item action may be direct; **more than one contextual action MUST use a vertical overflow menu `⋮` (`more_vert`)**, never side-by-side action buttons. Every menu item has a canonical semantic icon and translated label. Order: view/inspect → routine non-destructive → operational state change → high-impact/destructive last, separated or semantically styled. Respect role, authorization, state and domain rules; hide irrelevant actions, disable only when the unavailable action provides useful context. Keep routine actions available where the object is presented; details must not be a mandatory gateway.
-
-Each screen has one primary responsibility. Lists support scanning, comparison and common actions; drawers/details explain complete information/history and less-common actions. Never embed a second complete personal/detail workspace inside supervision. Prefer contextual drawers/dialogs to extra pages unless a distinct responsibility or complex workflow warrants navigation. Group sidebar entries by business responsibility, not backend modules; labels describe user intent, never internal aggregate names.
-
-Keep frequent search/filters left, compact display/settings controls secondary, and the primary management action right inside the canonical surface. Column/density/view preferences use canonical icon controls with tooltip and accessible label where supported, not large text buttons. Group page actions by responsibility and emphasis; rare actions may use overflow. Icons communicate meaning, use the canonical icon system and accessible labels; no production emoji or decorative overload. Use canonical status chips with translated labels; closed/inactive is neutral unless business semantics say otherwise. Premium/colorful means semantic colors/icons, subtle surfaces, clear tone/typography and polished hover/selection, never rainbow metrics, random colors or excessive gradients. Small screens retain overflow, readable menu labels and accessible touch targets rather than multiplying buttons.
-
-Detailed application guidance, INTERACTION PREFLIGHT, completion checks and UX INTERACTION REPORT are owned by [the design-system skill](.agents/skills/liass-design-system/SKILL.md); concrete patterns live in its [interaction reference](.agents/skills/liass-design-system/references/liass-interaction-patterns.md). For recurring interactions, inspect shared implementations first, then extend or create a generic primitive only for a demonstrated gap; never invent parallel feature variants. This contract documents no new shared component.
-
-### UI REUSE PREFLIGHT — mandatory before frontend implementation
-
-Complete in task analysis; no separate file required:
-
-1. Canonical reference screen: exact file/component.
-2. Shared components to reuse.
-3. Global styles/tokens to reuse.
-4. Formatters and locale/timezone policies.
-5. Canonical responsive composition/reference.
-6. Local visual deviations and justification.
-7. Missing capability: `REUSE / EXTEND / CREATE SHARED / DOMAIN-LOCAL`.
-8. Complete the skill’s mandatory **INTERACTION PREFLIGHT** before implementing new frontend interactions (responsibility, role/task, direct/overflow actions, details, display controls, duplication, navigation group and canonical reference).
-
-Future prompts can say: “Follow the mandatory Liass UI Reuse Preflight and Liass Frontend Design Contract in AGENTS.md,” then supply only feature-specific requirements.
-
-### UI REUSE REPORT — mandatory in frontend final reports
-
-State: canonical reference; shared components; global styles/tokens; formatter/policy; shared extensions; new shared components; page-local UI; local overrides and justification for each.
-
-Report separately:
-
-- Technical frontend validation: `PASS / FAIL`.
-- LIASS UI REUSE: `PASS / FAIL`.
-- LIASS UX PATTERNS: `PASS / FAIL` (all mandatory interaction checks in the skill).
-- LIASS DESIGN CONTRACT: `PASS / FAIL`.
-- Product Owner visual validation: `PENDING / PASS / FAIL`.
-
-Include the skill’s **UX INTERACTION REPORT** in every frontend implementation report.
-
-Overall implementation PASS requires LIASS UI REUSE, LIASS UX PATTERNS and LIASS DESIGN CONTRACT all PASS; LIASS UX PATTERNS = FAIL forbids overall PASS: shared primitives reused, canonical composition followed, tokens/formatting respected, overrides justified and responsive structure accounted for. Unit tests/builds never establish Product Owner visual acceptance. Pending manual acceptance must remain explicit; never claim it from technical checks.
-
-For standard management surfaces, reuse canonical Liass table, toolbar, form-control, dialog and action patterns exactly. Features must not redefine base colors, borders, row states, control sizing or spacing when a canonical pattern exists. Visual consistency means reuse of canonical implementations/tokens, not approximate reproduction from screenshots or prose. Inspect the named canonical implementation first.
+Technical frontend validation, LIASS UI REUSE, LIASS UX PATTERNS, and LIASS DESIGN CONTRACT must be reported separately. Overall implementation PASS requires all three design gates to PASS. Browser review at 1440, 900 and 390 is required for significant presentation changes; tests and builds do not establish Product Owner visual acceptance. Report Product Owner visual validation separately as PENDING / PASS / FAIL.
 
 ## Prompt Authority and Codebase Precedence
 
@@ -188,180 +115,17 @@ Example tasks requiring both skills include accounting entries, invoices, paymen
 
 Use TypeScript with strict null checks and no implicit `any`. Follow existing two-space JSON formatting and idiomatic TypeScript formatting. Use `lowerCamelCase` for TypeScript properties and UPPERCASE DynamoDB keys such as `PK`, `SK`, `GSI1PK`, and `GSI1SK`. Every persisted item must include an uppercase `entityType`. Account IDs are normalized to 8-digit strings, for example `41100000`. Keep backend user-facing strings in `packages/backend/locales/`; handlers should reference translation keys. Frontend component templates must use Transloco keys and pipes for user-facing copy instead of hardcoded strings, while TypeScript keys, variables, and comments remain English. Frontend API clients must live in the relevant domain `data-access/` folder and must validate important responses with schemas from `@liass-ohada/shared` before exposing data to components.
 
-## Permanent Frontend Visual and Form Guardrails
+## Frontend state and read architecture
 
-The canonical visual and Angular form rules live in `.agents/skills/liass-design-system/SKILL.md` and its existing references. Use that skill before frontend work, including its required design reconnaissance, contextual sidebar/navigation, typed business forms, semantic Material controls and visual/accessibility Definition of Done. Keep detailed design guidance there rather than maintaining a parallel charter here.
+`SPEC.md` section 5.D is authoritative for TanStack Query server-state ownership, mutation/cache behavior, tenant/context fencing and backend authority. Use `liass-platform-architecture` for significant read/search architecture decisions and compare frontend cache/local computation before adding backend read infrastructure. Use `liass-design-system` for UI presentation of loading, errors, empty results and partial pagination. Operational active Outlet behavior is specified in `SPEC.md` and must retain backend authorization and tenant/principal isolation.
 
-Preserve the approved Liass-OHADA visual baseline by default. Before modifying existing UI, inspect the closest approved screen/component and the central Material theme/tokens; reuse its successful visual pattern. Do not premiumize, restyle or re-theme existing controls unless the user explicitly requests that visual change. Scope visual changes to the request: shell/navigation or functional work must not implicitly redesign forms, dialogs or controls. UI consistency and absence of visual regressions are part of Definition of Done.
+## Frontend presentation details
 
-### Permanent frontend presentation governance
-
-Before substantial frontend work, classify the primary surface as `MANAGEMENT_COLLECTION`, `MANAGEMENT_EDITOR`, `MASTER_DETAIL_OPERATIONAL`, `SPATIAL_OPERATIONAL`, `STATE_BOARD`, `DOCUMENT`, `DASHBOARD`, or `SPECIAL_WORKFLOW`. State this classification in the implementation plan before component work; stop and report if it is ambiguous.
-
-Homogeneous `MANAGEMENT_COLLECTION` surfaces use a desktop table by default. Mobile may use cards, stacked key/value rows, or a compact touch-friendly list when the table no longer fits. **Responsive card fallback does not justify desktop cards.** Any desktop card/grid collection requires an explicit information-architecture justification in the plan and final report. Cards are for spatial/state scanning, summaries, documents, or workflow units, not a generic premium styling choice. `MASTER_DETAIL_OPERATIONAL` surfaces may use a compact list plus detail when the workflow requires it.
-
-Accounting is the canonical management-UI precedent. Before implementing a new management collection, inspect a comparable Accounting/platform screen and reuse its page heading, compact search/filter toolbar, dense table, final Actions column, status-chip semantics, spacing, row action menu, and responsive philosophy. Material owns semantic controls; Tailwind owns layout, spacing, and responsive composition.
-
-Passing automated tests is not sufficient for frontend acceptance. Significant routes and presentation changes require browser visual review at 1440, 900, and 390 pixels, including shell, hierarchy, density, actions, overflow, long content, and relevant loading/empty/error states. Final reports must state the presentation classification, canonical precedent, 1440/900/390 results, table/card decision, justified card exceptions, and deviations. Substantial plans must include: Route; Classification; Canonical precedent; Desktop pattern; Tablet pattern; Mobile pattern; Search/filter pattern; Actions pattern; Card exception justification.
-
-Operational `MASTER_DETAIL_OPERATIONAL`, `STATE_BOARD` and `SPATIAL_OPERATIONAL` surfaces must follow the Design System's operational page-composition contracts, including shared header/separator rhythm, coherent controls/work surfaces, responsive list/detail or lane navigation, and aggregation of common loading failures while independent lane failures remain local. Report technical and visual/product acceptance separately; operational card exceptions do not waive composition or browser review.
-
-## Frontend Resource Optimization
-
-Operational scope is not a page filter. For staff-scoped operational workflows, resolve the authorized active Outlet at application/product-context level; do not require repeated selection on individual operational routes. Configuration scope may remain route-local because management users intentionally administer multiple outlets. Preserve backend authorization and tenant/principal isolation; canonical collections remain in TanStack Query.
-
-Frontend server state must use TanStack Query where applicable. Query keys must be stable, domain-specific, and include active tenant/workspace or dossier context for tenant-scoped data. Reuse shared domain query helpers instead of creating duplicate API calls in components, and avoid refetching on every component mount when cached data is still fresh. Use longer `staleTime` values for stable master/reference data such as accounting accounts and journals, and filter/pagination-aware keys for transactional data such as ledgers, entries, balances, and reports. Mutations should update or invalidate only the affected query caches; imperative component refetches should be reserved for explicit user refresh actions or cases where targeted invalidation cannot represent the change. NgRx Signal Store is for UI/client state such as active workspace, active dossier, filters, and local interaction state; it must not replace TanStack Query server-state caching.
-
-## Frontend Cache & Read Architecture Rule
-
-Before solving a read, browse, filtering, search, aggregation, or repeated-data-access problem by adding more backend infrastructure, ALWAYS evaluate whether the existing frontend data/cache capabilities can provide a simpler, cheaper, faster, and sufficiently reliable solution.
-
-In particular, explicitly evaluate:
-
-- TanStack Query server-state caching;
-- existing browser/session cache reuse;
-- already-loaded canonical data;
-- bounded background prefetch/hydration;
-- local derived filtering/search/sorting;
-- Angular Signals / computed state for presentation;
-- existing Signal Store / local UI state where appropriate;
-- query reuse across routes/workspaces;
-- staleTime / gcTime / invalidation strategies;
-- whether data is reasonably bounded in realistic product usage.
-
-Do NOT automatically add:
-
-- a new DynamoDB GSI;
-- a new DynamoDB projection/read model;
-- a new Lambda;
-- a new API endpoint;
-- a search index;
-- polling;
-- realtime infrastructure;
-- duplicated frontend stores;
-
-until the cache/local-computation alternative has been evaluated.
-
-### Required decision process
-
-For any significant read/search architecture decision, compare at least:
-
-1. expected dataset cardinality;
-2. serialized payload size;
-3. browser memory impact;
-4. number of API requests;
-5. DynamoDB read/write cost;
-6. Lambda/API Gateway cost;
-7. cache reuse potential;
-8. data freshness requirements;
-9. mutation/invalidation behavior;
-10. tenant/account/outlet isolation;
-11. weak-network/mobile behavior;
-12. frontend computation/rendering cost;
-13. UX latency;
-14. implementation and maintenance complexity.
-
-Prefer the simplest architecture that meets correctness, scale, security, freshness, and UX requirements.
-
-### Server-state ownership
-
-Fetched canonical server collections should normally remain owned by TanStack Query.
-
-Do NOT copy the same canonical collection into NgRx Signal Store, Angular signals, or another custom cache merely to make it searchable/filterable.
-
-Prefer:
-
-API
-→ TanStack Query cache
-→ derived local/computed presentation state
-→ UI
-
-Use local Signals / Signal Store primarily for:
-
-- interaction state;
-- UI state;
-- search text;
-- selection state;
-- workflow state;
-- derived presentation state;
-
-unless there is a documented reason to duplicate canonical server state.
-
-### Backend authority
-
-Frontend caching and local computation must NEVER weaken backend authority.
-
-The backend remains authoritative for:
-
-- authorization;
-- tenant ownership;
-- current versions;
-- prices and financial values;
-- availability;
-- configuration validity;
-- transactional commands;
-- concurrency control.
-
-Cached frontend data may optimize reads and UX, but must not become a second business authority.
-
-### Partial-cache correctness
-
-If only part of a paginated collection is cached:
-
-- local filtering may return immediate partial matches;
-- the UI must NOT claim that no result exists if more pages may still exist;
-- cache exhaustiveness must be derived from canonical pagination state such as `nextCursor`;
-- background hydration may continue when bounded and justified.
-
-### Infrastructure escalation rule
-
-Add new backend read/search infrastructure only when evidence shows that frontend caching/local computation is insufficient because of factors such as:
-
-- dataset cardinality;
-- payload size;
-- unacceptable memory usage;
-- excessive hydration time;
-- freshness requirements;
-- cross-dataset search;
-- server-side authorization needs;
-- cost;
-- measurable UX/performance constraints.
-
-When escalating to backend infrastructure, document WHY the frontend/cache solution is insufficient.
-
-Do not choose a more sophisticated backend architecture merely because it is technically possible.
-
-### Cost and UX principle
-
-Optimize the complete path:
-
-DynamoDB access pattern
-→ API/Lambda
-→ TanStack Query cache
-→ Angular derived state
-→ DOM rendering
-
-The preferred solution is the one that minimizes total system cost and complexity while preserving correctness and delivering the best practical user experience.
-
-## Frontend Notifications
-
-Frontend action feedback should use the shared `NotificationService` backed by Angular Material `MatSnackBar`. Use snackbars for short, transient messages such as created, updated, disabled, saved, selection changed, lock/unlock completed, no changes detected, or recoverable action failures. Prefer backend-provided user-facing `message` values from success or normalized error responses, including nested shapes like `{ message: { code, message } }`; use Transloco fallback keys only when no safe backend message is available. Error snackbars must use `error-notification-overlay` and keep the error/red visual treatment rather than Material’s default dark snackbar. Never expose technical details such as `PK`, `SK`, `GSI*`, stack traces, raw AWS errors, or internal exception names. Keep form validation inline, page empty states in page context, blocking errors visible in the page, and risky-action explanations in confirmation dialogs; snackbars may be secondary feedback after those actions complete or fail.
-
-## Frontend User-Facing Copy
-
-Frontend visible text should use business language rather than implementation language. Normal user-facing screens, dialogs, empty states, validation messages, and notifications must not mention backend, API, Lambda, DynamoDB, `PK`, `SK`, `GSI*`, routes, deployment, or technical keys unless the surface is explicitly for administrators/developers. Rephrase implementation details into user outcomes and next actions, for example “les contrôles de l’exercice restent appliqués” instead of “le backend reste source de vérité”.
-
-## Frontend Tables
-
-Using the correct component is not sufficient; frontend acceptance requires the correct page composition. Management collections must use the canonical management collection surface defined in the Design System skill: coherent page header, bounded work surface, grouped scope/search/filter controls, predictable primary action and in-surface table/responsive records and states. Collection creation buttons (`+ Ajouter`, `Nouveau…`) stay inside the white/bordered work surface by default, following Accounting Tiers; an outside placement requires an explicit compelling workflow justification. Floating tables do not satisfy this contract. Inspect Accounting implementations and complete the skill's hard side-by-side visual gate and expanded presentation report before PASS.
-
-Default to tables for comparable management collections, with row actions in the final column. Management/list tables must include text search alongside structured filters; filters do not replace search. Keep the search/filter/action toolbar coherent across products. Inspect approved cross-product patterns, including Accounting, before inventing a presentation. Cards require a workflow justification; responsive adaptation and the full collection-presentation contract belong to the canonical Design System skill.
-
-Operational ERP tables should stay dense, readable, and customizable. When a row/item has more than one contextual action, use a compact vertical overflow (`⋮` / `more_vert`) trigger in a narrow actions column instead of laying out every action horizontally. Menu items must include an icon and a translated label, and should use restrained semantic color by intent: neutral for consultation/detail, brand for important navigation or primary business follow-up, info for edit/configuration, warning for risky-but-reversible cautions, and danger for destructive or disabling actions. Destructive actions must remain visually distinct and must still open confirmation dialogs. Keep primary page actions such as creating a new account, journal, or fiscal year visible in the page header or table toolbar. Multi-column tables should provide local table preferences, scoped by a stable table id such as `accounting.accounts` or `accounting.journals`, so users can show or hide optional columns. Required identity columns and the actions column must remain visible and non-toggleable. Do not add backend persistence for table preferences unless explicitly requested. Future data-heavy tables, especially Accounting entries, must use this pattern from the beginning.
+The `liass-design-system` skill owns notification, user-facing copy, table, action-menu, search/filter, column-preference and responsive presentation rules. Its management collection and operational composition contracts are mandatory when applicable.
 
 ## Testing Guidelines
 
-Backend Jest is configured in `packages/backend/jest.config.js` with `testEnvironment: node` and path alias `@/*`. Backend test files must match `**/test/**/*.test.ts` or `**/test/**/*.spec.ts`. Prefer focused unit tests such as `packages/backend/test/unit/accounting/create-account.test.ts`, and add workflow tests under `packages/backend/test/domains/` when behavior spans handlers or services. Frontend tests live beside Angular source files and run with Vitest through the Angular builder. Run `npm test` before submitting changes; use `npm run build` to catch shared package, backend, CDK-adjacent, and frontend compilation issues.
+Backend Jest runs through `packages/backend/jest.config.js`; frontend Vitest runs through the Angular builder. Run focused tests first. Run `npm test` and `npm run build` when justified for a completed application change, subject to the test execution and agent budget policy below; report any unrun broader checks. CDK resource changes have additional mandatory validation above.
 
 ## Commit & Pull Request Guidelines
 
