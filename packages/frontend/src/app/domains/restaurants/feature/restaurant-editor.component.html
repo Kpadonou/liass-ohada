@@ -112,6 +112,12 @@
           'RESTAURANTS.UI.PRICE_INVALID' | transloco
         }}</mat-error></mat-form-field
       >
+      <mat-form-field subscriptSizing="dynamic" class="w-full">
+        <mat-label>{{ 'RESTAURANTS.UI.SPECIFIC_TAX_UNIT' | transloco }}</mat-label>
+        <input matInput formControlName="specificTaxUnit" inputmode="decimal" />
+        <mat-hint>{{ 'RESTAURANTS.UI.SPECIFIC_TAX_UNIT_HELP' | transloco }}</mat-hint>
+        <mat-error>{{ 'RESTAURANTS.UI.SPECIFIC_TAX_UNIT_INVALID' | transloco }}</mat-error>
+      </mat-form-field>
       @if (!data.entity) {
         <mat-form-field subscriptSizing="dynamic" class="w-full"
           ><mat-label>{{ 'RESTAURANTS.UI.AVAILABILITY' | transloco }}</mat-label

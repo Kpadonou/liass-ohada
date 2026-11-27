@@ -255,6 +255,24 @@ describe('Restaurant configuration dialogs', () => {
     expect(price.getAttribute('aria-describedby')).toContain(error.id);
   });
 
+  it('saves and clears the optional group B specific tax per unit', async () => {
+    api.save.mockResolvedValue({ data: row('item'), message: 'Saved.' });
+    const f = await create({ org: 'org', kind: 'item', context, currency: 'XOF' });
+    f.componentInstance.form.patchValue({ name: 'Taxed item', price: '5000',
+      fiscalGroup: 'B', specificTaxUnit: '100' });
+    await f.componentInstance.submit();
+    expect(api.save.mock.calls[0][3]).toMatchObject({ specificTaxUnitMinor: 100,
+      fiscalClassification: { country: 'BJ', group: 'B' },
+      price: { amountMinor: 5000, currency: 'XOF' } });
+    f.destroy();
+    TestBed.resetTestingModule();
+    const edited = await create({ org: 'org', kind: 'item', context, currency: 'XOF',
+      entity: { ...row('item'), specificTaxUnitMinor: 100 } });
+    edited.componentInstance.form.controls.specificTaxUnit.setValue('');
+    await edited.componentInstance.submit();
+    expect(api.save.mock.calls[1][3].specificTaxUnitMinor).toBeNull();
+  });
+
   it('keeps create table input usable after a duplicate code error and retries the same intent', async () => {
     const f = await create({ org: 'org', kind: 'table', context });
     f.componentInstance.form.patchValue({ name: 'Terrace 1', code: 'T01' });

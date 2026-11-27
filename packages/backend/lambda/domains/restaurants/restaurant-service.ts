@@ -218,7 +218,7 @@ export class RestaurantsService {
       if (!category.isActive) return [];
       if (item.price.currency !== menuData.currency)
         throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
-      const { id, name, version, categoryId, price, availability, fiscalClassification } = item;
+      const { id, name, version, categoryId, price, availability, fiscalClassification, specificTaxUnitMinor } = item;
       return [
         OperationalMenuItemSchema.parse({
           id,
@@ -228,6 +228,7 @@ export class RestaurantsService {
           price,
           availability,
           fiscalClassification,
+          specificTaxUnitMinor,
           outletId,
           menuId: menuData.id,
           categoryName: category.name,
@@ -337,6 +338,9 @@ export class RestaurantsService {
     const menu = entitySchemas.menu.parse(menuCheck?.snapshot.data);
     if (item.price.currency !== menu.currency)
       throw new AppError(400, "RESTAURANTS_CURRENCY_MISMATCH");
+    if (item.specificTaxUnitMinor !== undefined &&
+      (menu.currency !== "XOF" || item.fiscalClassification?.group !== "B"))
+      throw new AppError(422, "RESTAURANTS_FISCAL_CLASSIFICATION_INVALID");
     if (item.fiscalClassification) {
       const company = await readCompanyFiscalProfile(orgId);
       try {
@@ -404,7 +408,7 @@ export class RestaurantsService {
       version: current.data.version + 1,
       updatedAt: new Date().toISOString(),
     };
-    for (const name of ["capacity", "preparationStationId"])
+    for (const name of ["capacity", "preparationStationId", "specificTaxUnitMinor"])
       if (mutable[name] === null) delete mutable[name];
     const data = entitySchemas[kind].parse(mutable) as RestaurantEntities[K];
     // Deactivation preserves historical references, including an inactive station.

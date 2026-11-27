@@ -4825,6 +4825,9 @@
       "FISCAL_GROUP": "Groupe fiscal par défaut",
       "FISCAL_GROUP_HELP": "Appliqué aux ventes ordinaires. Les exceptions nécessitent un justificatif lors de la vente.",
       "FISCAL_GROUP_REQUIRED": "Choisissez un groupe autorisé par le régime fiscal.",
+      "SPECIFIC_TAX_UNIT": "Taxe spécifique par unité (XOF, facultatif)",
+      "SPECIFIC_TAX_UNIT_HELP": "Ajoutée au prix affiché ; la commande indique la taxe pour toute la quantité. Réservée au groupe B.",
+      "SPECIFIC_TAX_UNIT_INVALID": "Saisissez un montant positif en XOF pour un article du groupe B.",
       "FISCAL_UNCLASSIFIED": "À classer",
       "FISCAL_REGIME_REQUIRED": "Déclarez d’abord le régime fiscal de l’entreprise.",
       "FISCAL_GROUPS": {
@@ -5210,6 +5213,7 @@
       "SPECIFIC_TAX": "Taxe spécifique",
       "ACCOMMODATION_TAX": "Taxe de séjour",
       "SPECIFIC_TAX_AMOUNT": "Taxe pour toute la quantité (XOF, incluse dans le TTC)",
+      "SPECIFIC_TAX_CONFIGURED": "Calculée selon le réglage de la carte et la quantité.",
       "INVALID_SPECIFIC_TAX": "Saisissez un montant de taxe entier et positif ou nul en XOF.",
       "FISCAL_TREATMENT": "Traitement fiscal",
       "CATALOG_TREATMENT": "Traitement standard",

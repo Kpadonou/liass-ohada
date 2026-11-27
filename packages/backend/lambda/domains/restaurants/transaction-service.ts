@@ -263,7 +263,14 @@ export class RestaurantTransactionsService {
       return fail("RESTAURANTS_FISCAL_CURRENCY_UNSUPPORTED", 422);
     let treatment: ReturnType<typeof resolveRestaurantFiscalTreatment>;
     let amounts: ReturnType<typeof calculateRestaurantFiscalLine>;
+    let specificTaxMinor = selected.specificTaxMinor;
     try {
+      if (item.data.specificTaxUnitMinor !== undefined) {
+        const configured = restaurantQuantityAmountMinor(item.data.specificTaxUnitMinor, line.data.quantity);
+        if (specificTaxMinor !== undefined && specificTaxMinor !== configured)
+          return fail("RESTAURANTS_FISCAL_TREATMENT_UNSUPPORTED", 422);
+        specificTaxMinor = configured;
+      }
       treatment = resolveRestaurantFiscalTreatment({
         classification: item.data.fiscalClassification,
         company: companyTax,
@@ -271,7 +278,7 @@ export class RestaurantTransactionsService {
       });
       amounts = calculateRestaurantFiscalLine({
         priceTtcMinor: amount,
-        specificTaxMinor: selected.specificTaxMinor,
+        specificTaxMinor,
         treatment,
       });
     } catch {
@@ -293,9 +300,9 @@ export class RestaurantTransactionsService {
       subtotalMinor: amounts.netMinor,
       discountMinor: 0,
       taxMinor: amounts.taxMinor,
-      ...(selected.specificTaxMinor !== undefined ? {
-        specificTaxMinor: selected.specificTaxMinor,
-        specificTaxKind: selected.specificTaxKind,
+      ...(specificTaxMinor !== undefined ? {
+        specificTaxMinor,
+        specificTaxKind: "SPECIFIC",
       } : {}),
       fiscalTreatment: treatment,
       lineTotalMinor: amounts.totalMinor,

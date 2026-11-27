@@ -180,6 +180,17 @@ export class RestaurantEditorComponent {
         : '',
       this.data.kind === 'item' ? [Validators.required] : [],
     ],
+    specificTaxUnit: [
+      'specificTaxUnitMinor' in (this.entity ?? {}) &&
+        (this.entity as { specificTaxUnitMinor?: number }).specificTaxUnitMinor
+        ? minorInput((this.entity as { specificTaxUnitMinor: number }).specificTaxUnitMinor, 'XOF') : '',
+      this.data.kind === 'item' ? [(control: AbstractControl) => {
+        const value = String(control.value ?? '').trim();
+        if (!value) return null;
+        try { return parseMinorInput(value, 'XOF') > 0 ? null : { invalid: true }; }
+        catch { return { invalid: true }; }
+      }] : [],
+    ],
   });
   private originalValues = this.form.getRawValue();
   readonly latestName = signal<string | null>(null);
@@ -274,6 +285,8 @@ export class RestaurantEditorComponent {
               reorder: current.guestReorderEnabled,
               availability: current.availability,
               fiscalGroup: current.fiscalClassification?.group ?? '',
+              specificTaxUnit: current.specificTaxUnitMinor
+                ? minorInput(current.specificTaxUnitMinor, 'XOF') : '',
             }
           : {}),
       };
@@ -290,6 +303,7 @@ export class RestaurantEditorComponent {
         station: choose(baseline.station, entered.station, fresh.station),
         reorder: choose(baseline.reorder, entered.reorder, fresh.reorder),
         fiscalGroup: choose(baseline.fiscalGroup, entered.fiscalGroup, fresh.fiscalGroup),
+        specificTaxUnit: choose(baseline.specificTaxUnit, entered.specificTaxUnit, fresh.specificTaxUnit),
       });
       this.originalValues = fresh;
       this.latestName.set(current.name);
@@ -371,6 +385,14 @@ export class RestaurantEditorComponent {
         return;
       }
       request['fiscalClassification'] = { country: 'BJ', group: v.fiscalGroup };
+      if (v.specificTaxUnit?.trim()) {
+        if (v.fiscalGroup !== 'B' || this.data.currency !== 'XOF') {
+          this.form.controls.specificTaxUnit.setErrors({ invalid: true });
+          return;
+        }
+        try { request['specificTaxUnitMinor'] = parseMinorInput(v.specificTaxUnit, 'XOF'); }
+        catch { this.form.controls.specificTaxUnit.setErrors({ invalid: true }); return; }
+      } else if (this.entity) request['specificTaxUnitMinor'] = null;
       try {
         request['price'] = {
           amountMinor: parseMinorInput(v.price ?? '', this.data.currency ?? 'XOF'),

@@ -102,6 +102,7 @@ export const MenuItemSchema = z
     preparationStationId: RestaurantIdSchema.optional(),
     guestReorderEnabled: z.boolean(),
     fiscalClassification: RestaurantCatalogFiscalClassificationSchema.optional(),
+    specificTaxUnitMinor: z.number().int().safe().positive().optional(),
   })
   .strict();
 
@@ -126,6 +127,7 @@ const hasChange = (value: object) =>
       "preparationStationId",
       "guestReorderEnabled",
       "fiscalClassification",
+      "specificTaxUnitMinor",
     ].includes(key),
   );
 export const CreateRestaurantRequestSchema = z
@@ -194,6 +196,7 @@ export const CreateMenuItemRequestSchema = z
     preparationStationId: RestaurantIdSchema.optional(),
     guestReorderEnabled: z.boolean().default(false),
     fiscalClassification: RestaurantCatalogFiscalClassificationSchema,
+    specificTaxUnitMinor: MenuItemSchema.shape.specificTaxUnitMinor,
   })
   .strict();
 export const UpdateMenuItemRequestSchema = z
@@ -203,6 +206,7 @@ export const UpdateMenuItemRequestSchema = z
     preparationStationId: RestaurantIdSchema.nullable().optional(),
     guestReorderEnabled: z.boolean().optional(),
     fiscalClassification: RestaurantCatalogFiscalClassificationSchema.optional(),
+    specificTaxUnitMinor: MenuItemSchema.shape.specificTaxUnitMinor.nullable().optional(),
   })
   .strict()
   .refine(hasChange);
@@ -396,6 +400,7 @@ export const OperationalMenuItemSchema = MenuItemSchema.pick({
   price: true,
   availability: true,
   fiscalClassification: true,
+  specificTaxUnitMinor: true,
 })
   .extend({ categoryName: RestaurantNameSchema })
   .strict();

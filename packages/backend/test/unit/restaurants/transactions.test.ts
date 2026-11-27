@@ -170,6 +170,35 @@ test("table occupancy, history, distributed create replay and immutable result",
     commands.find((r) => r.data.commandKind === "OPEN_SESSION")?.PK,
   ).toMatch(/#CMD#OPEN_SESSION#NEW#[a-f0-9]{64}$/);
 });
+
+test("case 07 Menu tax is captured as a full-line B tax for quantity three", async () => {
+  fixture.items[0] = await Config.update(ctx.orgId, "owner", "item",
+    { outletId: ctx.outletId, categoryId: fixture.categories[0].id }, fixture.items[0].id,
+    { expectedVersion: fixture.items[0].version, specificTaxUnitMinor: 100 });
+  const order = contracts.RestaurantOrderSchema.parse((await create()).data);
+  const draft = contracts.RestaurantOrderItemSchema.parse((await add(order.orderId, 0, 3)).data);
+  await submit(order.orderId, draft.itemId);
+  const accepted = (await S.line(ctx, order.orderId, draft.itemId)).data;
+  expect(accepted.snapshot).toMatchObject({
+    quantity: 3, unitPriceMinor: 5000, grossMinor: 15000,
+    specificTaxMinor: 300, specificTaxKind: "SPECIFIC", lineTotalMinor: 15354,
+    subtotalMinor: 13012, taxMinor: 2342,
+    fiscalTreatment: { effectiveGroup: "B", rateBasisPoints: 1800 },
+  });
+  const second = contracts.RestaurantOrderSchema.parse((await create()).data);
+  const secondDraft = contracts.RestaurantOrderItemSchema.parse((await add(second.orderId, 0, 3)).data);
+  const currentSecond = (await S.order(ctx, second.orderId)).data;
+  await expect(execute("SUBMIT_ORDER", { clientRequestId: requestId(),
+    expectedVersion: currentSecond.version, items: [{ itemId: secondDraft.itemId,
+      expectedVersion: secondDraft.version, specificTaxMinor: 200,
+      specificTaxKind: "SPECIFIC" }] }, { orderId: second.orderId }))
+    .rejects.toMatchObject({ messageCode: "RESTAURANTS_FISCAL_TREATMENT_UNSUPPORTED" });
+  const updated = await Config.update(ctx.orgId, "owner", "item",
+    { outletId: ctx.outletId, categoryId: fixture.categories[0].id }, fixture.items[0].id,
+    { expectedVersion: fixture.items[0].version, specificTaxUnitMinor: null });
+  expect(updated.specificTaxUnitMinor).toBeUndefined();
+  expect((await S.line(ctx, order.orderId, draft.itemId)).data.snapshot?.specificTaxMinor).toBe(300);
+});
 test("competing open requests commit exactly one complete visit", async () => {
   const before = rows().length;
   const results = await Promise.allSettled([open(), open()]);

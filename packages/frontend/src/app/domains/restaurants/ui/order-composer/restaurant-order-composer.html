@@ -357,7 +357,14 @@
                       <div class="grid gap-2 sm:max-w-80">
                         <mat-form-field subscriptSizing="dynamic">
                           <mat-label>{{ 'RESTAURANTS.ORDER_TAKING.SPECIFIC_TAX_AMOUNT' | transloco }}</mat-label>
-                          <input matInput type="text" inputmode="numeric" [formControl]="specificTaxInput(line)" [readOnly]="!ready()" />
+                          @if (configuredSpecificTax(line) !== undefined) {
+                            <input matInput type="text" [value]="configuredSpecificTax(line)" readonly />
+                          } @else {
+                            <input matInput type="text" inputmode="numeric" [formControl]="specificTaxInput(line)" [readOnly]="!ready()" />
+                          }
+                          @if (configuredSpecificTax(line) !== undefined) {
+                            <mat-hint>{{ 'RESTAURANTS.ORDER_TAKING.SPECIFIC_TAX_CONFIGURED' | transloco }}</mat-hint>
+                          }
                         </mat-form-field>
                       </div>
                       @if (catalogFiscalGroup(line) === 'B' || catalogFiscalGroup(line) === 'E') {

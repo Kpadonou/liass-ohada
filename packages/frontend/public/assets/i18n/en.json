@@ -4825,6 +4825,9 @@
       "FISCAL_GROUP": "Default tax group",
       "FISCAL_GROUP_HELP": "Used for ordinary sales. Exceptions require evidence when the sale is accepted.",
       "FISCAL_GROUP_REQUIRED": "Choose a group allowed by the company's tax regime.",
+      "SPECIFIC_TAX_UNIT": "Specific tax per unit (XOF, optional)",
+      "SPECIFIC_TAX_UNIT_HELP": "Added to the listed price; the order shows the tax for the full quantity. Available for group B.",
+      "SPECIFIC_TAX_UNIT_INVALID": "Enter a positive whole-XOF amount for a group B item.",
       "FISCAL_UNCLASSIFIED": "Needs classification",
       "FISCAL_REGIME_REQUIRED": "Declare the company's tax regime first.",
       "FISCAL_GROUPS": {
@@ -5210,6 +5213,7 @@
       "SPECIFIC_TAX": "Specific tax",
       "ACCOMMODATION_TAX": "Accommodation tax",
       "SPECIFIC_TAX_AMOUNT": "Tax for full quantity (XOF, included in TTC)",
+      "SPECIFIC_TAX_CONFIGURED": "Calculated from the Menu setting and quantity.",
       "INVALID_SPECIFIC_TAX": "Enter a whole, nonnegative tax amount in XOF.",
       "FISCAL_TREATMENT": "Fiscal treatment",
       "CATALOG_TREATMENT": "Standard treatment",

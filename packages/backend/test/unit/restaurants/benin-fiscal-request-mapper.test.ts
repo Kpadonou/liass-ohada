@@ -212,6 +212,30 @@ test("DGI group B example preserves TTC price, taxable base, VAT and final total
   });
   expect(result.fiscalAdditionalTotals).toEqual({ aib: 0, ts: 3_000 });
 });
+test("case 07 maps immutable quantity-three tax as one total taxSpecific", () => {
+  const frozen = { ...line, netAmountMinor: 15_354, snapshot: {
+    ...line.snapshot, quantity: 3, unitPriceMinor: 5_000, grossMinor: 15_000,
+    subtotalMinor: 13_012, taxMinor: 2_342, lineTotalMinor: 15_354,
+    specificTaxMinor: 300, specificTaxKind: "SPECIFIC" as const,
+    fiscalTreatment: { country: "BJ" as const, catalogGroup: "B" as const,
+      effectiveGroup: "B" as const, regime: "ORDINARY_VAT" as const,
+      regimeRevision: id, policyId: "BJ-RESTO-TTC" as const, policyVersion: 2 as const,
+      rateBasisPoints: 1800 as const, rounding: "HALF_UP_LINE" as const },
+  } };
+  const mapped = mapRestaurantFiscalLines({ lines: [frozen], classifications: [{
+    ...classification, classificationEvidence: id, taxSpecificMinor: "300",
+  }] });
+  const result = mapRestaurantBeninRequest({ ...preparation(), ...mapped,
+    customer: { name: "Client Test", ifu: "1234567890123" },
+    paidByMethodMinor: { CASH: 15_354, MOBILE_MONEY: 0, CARD: 0 },
+  }, principal, identity, configuration());
+  expect(result.payload).toMatchObject({ invoice: {
+    client: { name: "Client Test", ifu: "1234567890123" },
+    items: [{ quantity: 3, price: 5_000, taxGroup: "B", taxSpecific: 300 }],
+  }, expected: { total: 15_354 } });
+  expect(result.fiscalGroupTotals?.B).toEqual({ gross: 15_354, net: 13_012, tax: 2_342 });
+  expect(result.fiscalAdditionalTotals).toEqual({ aib: 0, ts: 300 });
+});
 test("AIB 5% remains available without an IFU as in SFE scenario 08", () => {
   const result = mapRestaurantBeninRequest({ ...preparation(), aib: "B" }, principal, identity, configuration());
   expect(result.payload).toMatchObject({ invoice: { aib: "B" } });

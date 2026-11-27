@@ -411,6 +411,20 @@ it('submits the tax for the full draft quantity with evidenced D treatment', asy
       fiscalException: { group: 'D', evidenceReference: 'DGI review 13' } }],
   });
 });
+it('displays a configured Menu tax and lets the server derive the full-line amount', async () => {
+  menu.cartePage.mockResolvedValue({ outletId: rid(2), menuId: rid(7),
+    items: [{ ...operational(), specificTaxUnitMinor: 100,
+      fiscalClassification: { country: 'BJ', group: 'B' } }] });
+  await page.menuItemsQuery.refetch();
+  await draftInput();
+  const line = page.drafts()[0];
+  expect(page.configuredSpecificTax(line)).toBe(100);
+  fixture.detectChanges();
+  expect(fixture.nativeElement.textContent).toContain('Calculée selon le réglage de la carte');
+  await page.submit();
+  const submitted = api.command.mock.calls.find(call => call[1] === 'submit')?.[2];
+  expect(submitted?.items[0]).not.toHaveProperty('specificTaxMinor');
+});
 it('does not offer empty-Order cancellation while a failed or ambiguous removal retains unresolved intent', async () => {
   management = true;
   await draftInput();

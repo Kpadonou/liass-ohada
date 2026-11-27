@@ -36,6 +36,7 @@ import { LiassButtonComponent } from '../../../../shared/ui/button/button.compon
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectInfiniteQuery, injectQuery } from '@tanstack/angular-query-experimental';
 import * as c from '@liass-ohada/shared/restaurants';
+import { restaurantQuantityAmountMinor } from '@liass-ohada/shared/restaurant-quantity';
 import { AuthStore } from '../../../identity/data-access/auth.store';
 import { RestaurantsQueries } from '../../data-access/restaurants.queries';
 import { RestaurantOrdersQueries } from '../../data-access/restaurant-orders.queries';
@@ -264,6 +265,10 @@ export class RestaurantOrderComposer {
   private readonly fiscalEvidenceControls = new Map<string, FormControl<string>>();
   catalogFiscalGroup(line: c.RestaurantOrderItem) {
     return this.indexedItems().find(row => row.item.id === line.menuItemId)?.item.fiscalClassification?.group;
+  }
+  configuredSpecificTax(line: c.RestaurantOrderItem) {
+    const unit = this.indexedItems().find(row => row.item.id === line.menuItemId)?.item.specificTaxUnitMinor;
+    return unit === undefined ? undefined : restaurantQuantityAmountMinor(unit, line.quantity);
   }
   fiscalExceptionInput(line: c.RestaurantOrderItem) {
     const key = this.draftKey(line);
@@ -805,8 +810,9 @@ export class RestaurantOrderComposer {
   }
   async submit() {
     if (!this.canSubmit()) return;
-    if (this.drafts().some(line => !/^(0|[1-9]\d*)$/.test(this.specificTaxInput(line).value.trim()) ||
-        !Number.isSafeInteger(Number(this.specificTaxInput(line).value.trim())))) {
+    if (this.drafts().some(line => this.configuredSpecificTax(line) === undefined &&
+        (!/^(0|[1-9]\d*)$/.test(this.specificTaxInput(line).value.trim()) ||
+        !Number.isSafeInteger(Number(this.specificTaxInput(line).value.trim()))))) {
       this.message.set('INVALID_SPECIFIC_TAX');
       return;
     }
@@ -817,7 +823,7 @@ export class RestaurantOrderComposer {
     }
     const taxSelections = new Map(this.drafts().map(line => {
       const entered = this.specificTaxInput(line).value.trim();
-      return [this.draftKey(line), Number(entered)] as const;
+      return [this.draftKey(line), this.configuredSpecificTax(line) === undefined ? Number(entered) : 0] as const;
     }));
     const frozen = this.drafts().map((line) => ({
       key: this.draftKey(line),
