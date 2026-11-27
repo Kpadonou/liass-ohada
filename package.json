@@ -32,7 +32,7 @@
     "shared:build": "npm run build -w @liass-ohada/shared"
   },
   "devDependencies": {
-    "handlebars": "^4.7.9",
+    "handlebars": "^4.7.10",
     "path-to-regexp": "^8.4.2"
   }
 }

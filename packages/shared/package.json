@@ -97,7 +97,7 @@
     "build": "node ../../scripts/shared-build.mjs build src/index.ts src/accounting/index.ts src/projects/index.ts src/treasury/index.ts src/sales/index.ts src/fiscal-compliance/index.ts src/restaurants/index.ts src/restaurants/quantity.ts src/shared/index.ts src/backend.ts --format cjs,esm --sourcemap --clean"
   },
   "dependencies": {
-    "zod": "^4.3.4"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "tsup": "^8.5.1",

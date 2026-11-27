@@ -43,6 +43,8 @@ Before adding backend indexes, projections, search infrastructure or specialized
 
 ## Invariants
 
+- Each workspace explicitly declares external packages it directly imports. Libraries crossing shared type-contract boundaries use compatible versions; do not rely on transitive dependency hoisting.
+- Temporary dependency compatibility: backend, frontend, and shared pin Zod exactly to `4.6.6` because it fixes the constrained-collection memory advisory while preserving one type-contract version. The lockfile resolves Angular framework/compiler to `21.2.26` and build/CLI to `21.2.31` for the audited patch set. Remove the Zod pin or advance Angular only after a clean install, shared/backend builds, Angular development build, affected tests, and production-classified audit pass with the proposed versions; review the generated declarations and lockfile for duplicate versions.
 - Keep one platform brand, one authenticated application, one Cognito identity system, and one global organization identity.
 - Keep the current DynamoDB Single Table strategy and centralized `KeyFactory` unless a future reviewed migration explicitly changes them.
 - Domain separation is logical before physical. Do not introduce microservices solely to satisfy domain separation.
