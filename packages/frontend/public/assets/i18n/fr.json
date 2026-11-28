@@ -5212,7 +5212,7 @@
       "SPECIFIC_TAX_KIND": "Type de taxe complémentaire",
       "SPECIFIC_TAX": "Taxe spécifique",
       "ACCOMMODATION_TAX": "Taxe de séjour",
-      "SPECIFIC_TAX_AMOUNT": "Taxe pour toute la quantité (XOF, incluse dans le TTC)",
+      "SPECIFIC_TAX_AMOUNT": "Taxe pour toute la quantité (XOF, ajoutée au prix affiché)",
       "SPECIFIC_TAX_CONFIGURED": "Calculée selon le réglage de la carte et la quantité.",
       "INVALID_SPECIFIC_TAX": "Saisissez un montant de taxe entier et positif ou nul en XOF.",
       "FISCAL_TREATMENT": "Traitement fiscal",

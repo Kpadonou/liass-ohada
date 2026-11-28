@@ -421,6 +421,7 @@ it('displays a configured Menu tax and lets the server derive the full-line amou
   expect(page.configuredSpecificTax(line)).toBe(100);
   fixture.detectChanges();
   expect(fixture.nativeElement.textContent).toContain('Calculée selon le réglage de la carte');
+  expect(fixture.nativeElement.textContent).toContain('ajoutée au prix affiché');
   await page.submit();
   const submitted = api.command.mock.calls.find(call => call[1] === 'submit')?.[2];
   expect(submitted?.items[0]).not.toHaveProperty('specificTaxMinor');

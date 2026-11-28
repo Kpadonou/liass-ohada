@@ -5212,7 +5212,7 @@
       "SPECIFIC_TAX_KIND": "Additional tax type",
       "SPECIFIC_TAX": "Specific tax",
       "ACCOMMODATION_TAX": "Accommodation tax",
-      "SPECIFIC_TAX_AMOUNT": "Tax for full quantity (XOF, included in TTC)",
+      "SPECIFIC_TAX_AMOUNT": "Tax for full quantity (XOF, added to displayed price)",
       "SPECIFIC_TAX_CONFIGURED": "Calculated from the Menu setting and quantity.",
       "INVALID_SPECIFIC_TAX": "Enter a whole, nonnegative tax amount in XOF.",
       "FISCAL_TREATMENT": "Fiscal treatment",
