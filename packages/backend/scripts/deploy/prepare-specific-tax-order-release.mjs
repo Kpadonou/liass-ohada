@@ -4,16 +4,18 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { RESTAURANTS_SPECIFIC_TAX_ORDER_RELEASE, RESTAURANTS_SPECIFIC_TAX_DRAFT_RELEASE, validateReleaseManifest } from './dev-immutable-lambda-code-release.mjs';
+import { RESTAURANTS_SPECIFIC_TAX_ORDER_RELEASE, RESTAURANTS_SPECIFIC_TAX_DRAFT_RELEASE, RESTAURANTS_SPECIFIC_TAX_CLOSE_RELEASE, validateReleaseManifest } from './dev-immutable-lambda-code-release.mjs';
 
 const draft = process.argv.includes('--draft-items');
-const profile = draft ? RESTAURANTS_SPECIFIC_TAX_DRAFT_RELEASE : RESTAURANTS_SPECIFIC_TAX_ORDER_RELEASE;
+const close = process.argv.includes('--close-order');
+assert.ok(!(draft && close), 'Choose one release profile');
+const profile = close ? RESTAURANTS_SPECIFIC_TAX_CLOSE_RELEASE : draft ? RESTAURANTS_SPECIFIC_TAX_DRAFT_RELEASE : RESTAURANTS_SPECIFIC_TAX_ORDER_RELEASE;
 
 const region = 'eu-west-3';
 const account = '570197775998';
 const backend = resolve(import.meta.dirname, '../..');
 const synth = join(backend, 'cdk.out/specific-tax-order-compat');
-const release = join(backend, draft ? 'cdk.out/releases/specific-tax-draft-compat' : 'cdk.out/releases/specific-tax-order-compat');
+const release = join(backend, close ? 'cdk.out/releases/specific-tax-close-compat' : draft ? 'cdk.out/releases/specific-tax-draft-compat' : 'cdk.out/releases/specific-tax-order-compat');
 const templateName = readdirSync(synth).find(name => name.includes('RestaurantsApi') && name.endsWith('.nested.template.json'));
 assert.ok(templateName, 'Restaurants nested template missing');
 const template = JSON.parse(readFileSync(join(synth, templateName), 'utf8'));
@@ -38,7 +40,7 @@ const manifest = { mode: 'PREPARE_ONLY', deploymentExecuted: false,
   releaseProfile: profile.profile,
   target: { account, region, stage: 'dev' },
   commit: profile.commit,
-  scope: draft ? 'code-only add/edit draft item Menu schema compatibility' : 'code-only create-order and order-items Menu schema compatibility', artifacts };
+  scope: close ? 'code-only close-order fiscal policy v2 schema compatibility' : draft ? 'code-only add/edit draft item Menu schema compatibility' : 'code-only create-order and order-items Menu schema compatibility', artifacts };
 validateReleaseManifest(manifest, release);
 writeFileSync(join(release, 'release-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(JSON.stringify({ release, artifacts: artifacts.map(({ functionName, codeSha256, liveCodeSha256 }) =>

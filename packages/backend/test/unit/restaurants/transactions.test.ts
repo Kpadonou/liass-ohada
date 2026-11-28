@@ -185,6 +185,8 @@ test("case 07 Menu tax is captured as a full-line B tax for quantity three", asy
     subtotalMinor: 13012, taxMinor: 2342,
     fiscalTreatment: { effectiveGroup: "B", rateBasisPoints: 1800 },
   });
+  expect(accepted.snapshot?.fiscalTreatment?.policyVersion).toBe(2);
+  expect((await S.allLines(ctx, order.orderId))[0].snapshot?.fiscalTreatment?.policyVersion).toBe(2);
   const second = contracts.RestaurantOrderSchema.parse((await create()).data);
   const secondDraft = contracts.RestaurantOrderItemSchema.parse((await add(second.orderId, 0, 3)).data);
   const currentSecond = (await S.order(ctx, second.orderId)).data;
