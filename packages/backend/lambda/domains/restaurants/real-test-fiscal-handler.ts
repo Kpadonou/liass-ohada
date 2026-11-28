@@ -1,5 +1,6 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, DynamoDBStreamEvent } from "aws-lambda";
 import { processFiscalIntentStream } from "./fiscal-intent-stream";
+import { readBoundFiscalItemTest } from "./fiscal-item-diagnostic";
 import { recoverBlockedFiscalWork, fiscalWorkRecoveryRequest, completeConfirmedFiscalWork, recoverBoundFiscalWork } from "./fiscal-work-recovery";
 import { AppError } from "@/lambda/shared/app-error";
 import { realFiscalTestEnabled } from "../fiscal-compliance/core/test-execution";
@@ -37,7 +38,8 @@ export function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer): Promise
 export function handler(event: DynamoDBStreamEvent): Promise<{ batchItemFailures: { itemIdentifier: string }[] }>;
 export function handler(event: { type: "RECOVER_FISCAL_WORK_V1" | "COMPLETE_CONFIRMED_FISCAL_WORK_V1"; orgId: string; outletId: string; sessionId: string; invoiceId: string }): ReturnType<typeof recoverBlockedFiscalWork> | ReturnType<typeof completeConfirmedFiscalWork>;
 export function handler(event: { type: "RECOVER_BOUND_FISCAL_WORK_V1"; orgId: string; outletId: string; sessionId: string; invoiceId: string; expectedClaimVersion: number; expectedBindingDigest: string }): ReturnType<typeof recoverBoundFiscalWork>;
-export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer | DynamoDBStreamEvent | { type: "RECOVER_FISCAL_WORK_V1" | "COMPLETE_CONFIRMED_FISCAL_WORK_V1" | "RECOVER_BOUND_FISCAL_WORK_V1"; orgId: string; outletId: string; sessionId: string; invoiceId: string; expectedClaimVersion?: number; expectedBindingDigest?: string }) {
+export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer | DynamoDBStreamEvent | { type: "RECOVER_FISCAL_WORK_V1" | "COMPLETE_CONFIRMED_FISCAL_WORK_V1" | "RECOVER_BOUND_FISCAL_WORK_V1" | "READ_BOUND_FISCAL_ITEM_TEST_V1"; orgId: string; outletId: string; sessionId: string; invoiceId: string; uid?: string; expectedClaimVersion?: number; expectedBindingDigest?: string }) {
+  if ("type" in event && event.type === "READ_BOUND_FISCAL_ITEM_TEST_V1") return readBoundFiscalItemTest(event);
   if ("type" in event && event.type === "COMPLETE_CONFIRMED_FISCAL_WORK_V1") return completeConfirmedFiscalWork(event);
   if ("type" in event && event.type === "RECOVER_BOUND_FISCAL_WORK_V1") return recoverBoundFiscalWork(event);
   if ("type" in event) return recoverBlockedFiscalWork(fiscalWorkRecoveryRequest.parse(event));
