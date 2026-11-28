@@ -737,6 +737,10 @@ export class BeninEMecefTestAdapter {
       }),
     );
   }
+  /** Read-only TEST diagnostic uses the same accepted GET shape as confirmation preflight. */
+  getInvoiceForTestDiagnostic(input: GetBeninEMecefStatusInput, uid: string) {
+    return this.getInvoiceForTestConfirmation(input, uid);
+  }
 }
 
 function providerRejected(

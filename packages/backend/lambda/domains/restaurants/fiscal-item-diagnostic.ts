@@ -14,6 +14,15 @@ const requestSchema = z.object({ type: z.literal("READ_BOUND_FISCAL_ITEM_TEST_V1
   orgId: z.string().min(1), outletId: z.string().uuid(), sessionId: z.string().uuid(),
   invoiceId: z.string().uuid(), uid: z.string().uuid() }).strict();
 
+export function specificTaxObservation(details: { items?: readonly { taxSpecific?: number | null; price?: number; quantity?: number }[] | null }) {
+  const item = details.items?.[0];
+  const present = !!item && Object.hasOwn(item, "taxSpecific");
+  return { itemCount: details.items?.length ?? null,
+    taxSpecific: { present, type: present ? item!.taxSpecific === null ? "null" : typeof item!.taxSpecific : "missing",
+      ...(present ? { value: item!.taxSpecific } : {}) },
+    price: item?.price ?? null, quantity: item?.quantity ?? null };
+}
+
 /** IAM-only diagnostic. One provider GET; no attempt write or provider mutation. */
 export async function readBoundFiscalItemTest(input: unknown) {
   const r = requestSchema.parse(input);
@@ -41,13 +50,8 @@ export async function readBoundFiscalItemTest(input: unknown) {
   const credential = await Fiscal.credentialBinding(r.orgId,
     { stage: "dev", sub: intent.actorId, issuer: "https://executor.invalid" }, connection);
   const token = await Fiscal.readVerificationCredential(connection, credential);
-  const details = await new BeninEMecefTestAdapter().getInvoice({ environment: "TEST", credential: token }, r.uid);
-  const item = details.items?.[0];
-  const present = !!item && Object.hasOwn(item, "taxSpecific");
-  return { uid: r.uid, itemCount: details.items?.length ?? null,
-    taxSpecific: { present, type: present ? item!.taxSpecific === null ? "null" : typeof item!.taxSpecific : "missing",
-      ...(present ? { value: item!.taxSpecific } : {}) },
-    price: item?.price ?? null, quantity: item?.quantity ?? null,
+  const details = await new BeninEMecefTestAdapter().getInvoiceForTestDiagnostic({ environment: "TEST", credential: token }, r.uid);
+  return { uid: r.uid, ...specificTaxObservation(details),
     expectedSpecificTax: source.preparation.lines[0]?.fiscal.taxSpecificMinor ?? null,
     expectedTotal: attempt.expectedTotal, providerTotal: attempt.providerTotal };
 }

@@ -597,6 +597,13 @@ test("does not convert an unknown GET invoice type to FV", async () => {
   );
 });
 
+test("TEST read-only item diagnostic accepts the existing NA GET shape", async () => {
+  const adapter = new BeninEMecefTestAdapter({ transport: jest.fn(async () =>
+    response({ ...invoice(), type: "NA", operator: null })) });
+  await expect(adapter.getInvoiceForTestDiagnostic(input, "existing-uid"))
+    .resolves.toMatchObject({ type: "NA" });
+});
+
 test("TEST resume accepts NA only after independent commercial reconciliation", async () => {
   const doc = invoice();
   const transport = jest.fn(async () =>
