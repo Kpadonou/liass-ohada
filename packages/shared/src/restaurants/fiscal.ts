@@ -51,6 +51,7 @@ const fields = {
   execution: z.enum(["SYNTHETIC", "REAL_TEST", "REAL_PRODUCTION"]),
   status: RestaurantFiscalStatusSchema,
   workState: z.enum(["PENDING", "CLAIMED", "BLOCKED", "CONFIRMED", "INTERRUPTED"]).nullable().optional(),
+  blockReason: z.string().regex(/^[A-Z][A-Z0-9_]{2,99}$/).optional(),
   confirmed: z.boolean(),
   legallyNormalized: z.literal(false),
   normalizedInvoice: z.null(),

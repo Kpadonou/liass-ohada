@@ -158,6 +158,33 @@ test("frozen specific tax and buyer AIB map to DGI request with reconciled total
   })) }), () => "synthetic-secret");
   await expect(binding.createInvoice(result)).resolves.toMatchObject({ reconciled: true, total: 2000 });
 });
+test("FIDJOSSE-shaped FV maps full-line specific tax without client or AIB", () => {
+  const base = preparation();
+  const taxed = { ...line, netAmountMinor: 42_360, snapshot: { ...line.snapshot,
+    name: "Synthetic group B item", quantity: 2, unitPriceMinor: 20_000,
+    grossMinor: 40_000, subtotalMinor: 35_898, taxMinor: 6_462,
+    specificTaxMinor: 2_000, specificTaxKind: "SPECIFIC" as const,
+    lineTotalMinor: 42_360,
+    fiscalTreatment: { country: "BJ" as const, catalogGroup: "B" as const,
+      effectiveGroup: "B" as const, regime: "ORDINARY_VAT" as const,
+      regimeRevision: id, policyId: "BJ-RESTO-TTC" as const,
+      policyVersion: 2 as const, rateBasisPoints: 1800 as const,
+      rounding: "HALF_UP_LINE" as const },
+  } };
+  const mapped = mapRestaurantFiscalLines({ lines: [taxed], classifications: [{
+    ...classification, classificationEvidence: id, taxSpecificMinor: "2000",
+  }] });
+  const result = mapRestaurantBeninRequest({ ...base, ...mapped,
+    paidByMethodMinor: { CASH: 42_360, MOBILE_MONEY: 0, CARD: 0 },
+  }, principal, identity, configuration());
+  expect(result.payload).toMatchObject({ invoice: { type: "FV", items: [{
+    price: 20_000, quantity: 2, taxGroup: "B", taxSpecific: 2_000,
+  }], payment: [{ amount: 42_360 }] }, expected: { total: 42_360, itemTotals: [42_360] } });
+  expect((result.payload as { invoice: object }).invoice).not.toHaveProperty("client");
+  expect((result.payload as { invoice: object }).invoice).not.toHaveProperty("aib");
+  expect(result.fiscalGroupTotals?.B).toEqual({ gross: 42_360, net: 35_898, tax: 6_462 });
+  expect(result.fiscalAdditionalTotals).toEqual({ aib: 0, ts: 2_000 });
+});
 test("DGI group B example preserves TTC price, taxable base, VAT and final total", () => {
   const dgiLine = {
     ...line,

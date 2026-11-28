@@ -1,4 +1,3 @@
-import { selectBeninSfeScenario } from "../fiscal-compliance/providers/benin-emecef/sfe-scenarios";
 import { canonical } from "@/lambda/shared/authority/integrity";
 import { OrganizationFiscalRepository as Fiscal } from "@/lambda/shared/repositories/organization-fiscal-repository";
 import type { FiscalIssuanceBinding } from "@liass-ohada/shared/shared";
@@ -21,20 +20,7 @@ export async function prepareBoundRestaurantWorkflow(work: {
     sessionId, invoiceId, classifications: [], requireV1: true });
   if (!source.ready || canonical(source.preparation.provenance.fiscalBinding) !== canonical(fiscalBinding))
     throw new Error("FISCAL_SOURCE_MISMATCH");
-  const scenarioId = selectBeninSfeScenario({
-    // C is an explicit frozen export classification. TPS E alone remains
-    // domestic: EV/E needs an independently supplied export intent.
-    type: source.preparation.lines.some(line => line.fiscal.taxGroup === "C") ? "EV" : "FV",
-    items: source.preparation.lines.map(line => ({
-      taxGroup: line.fiscal.taxGroup, quantity: line.commercial.snapshot.quantity,
-      taxSpecific: line.fiscal.taxSpecificMinor,
-    })),
-    customer: source.preparation.customer, aib: source.preparation.aib,
-  });
-  if (!scenarioId) throw new Error("FISCAL_SCENARIO_UNSUPPORTED");
-  const { mapping, expectedFiscalTotals, mapped } = await RestaurantFiscalAuthorizationPreparationService.prepareMapping({
-    ...work, scenarioId, commandId: invoiceId, automaticPolicy: true,
-  });
+  const { mapping, expectedFiscalTotals, mapped } = await RestaurantFiscalAuthorizationPreparationService.prepareGeneralMapping(work);
   const connection = await Fiscal.resolveBoundIssuanceConnection(orgId, fiscalBinding);
   const credential = await Fiscal.credentialBinding(orgId, { stage, sub: actorId, issuer: "https://executor.invalid" }, connection);
   const token = await Fiscal.readVerificationCredential(connection, credential);

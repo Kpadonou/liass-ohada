@@ -23,7 +23,18 @@ export class RestaurantFiscalAuthorizationPreparationService {
       scenarioId: input.scenarioId, commandId: input.commandId,
     });
     const policy: SfeScenario | undefined = beninSfeScenarios[request.scenarioId as BeninSfeScenarioId];
-    if (!policy || policy.stayTax || !["FV", "EV"].includes(policy.type)) return fail("FISCAL_SCENARIO_UNSUPPORTED", 400);
+    if (!policy || policy.stayTax || (policy.type !== "FV" && policy.type !== "EV")) return fail("FISCAL_SCENARIO_UNSUPPORTED", 400);
+    return this.mapSource(input, policy.type, request.scenarioId, policy, !input.automaticPolicy);
+  }
+  /** Ordinary issuance is source-bound, but does not claim certification-case evidence. */
+  static async prepareGeneralMapping(input: {
+    orgId: string; actorId: string; outletId: string; sessionId: string; invoiceId: string;
+  }) {
+    return this.mapSource(input);
+  }
+  private static async mapSource(input: {
+    orgId: string; actorId: string; outletId: string; sessionId: string; invoiceId: string;
+  }, scenarioType?: "FV" | "EV", scenarioId?: string, policy?: SfeScenario, exactQuantities = true) {
     const scope = { orgId: input.orgId, outletId: c.RestaurantIdSchema.parse(input.outletId) };
     const verified = await RestaurantInvoiceSourceVerifier.verify(
       scope, input.actorId, c.RestaurantIdSchema.parse(input.sessionId),
@@ -39,16 +50,23 @@ export class RestaurantFiscalAuthorizationPreparationService {
     }, async () => verified);
     if (!prepared.ready) return fail("FISCAL_PREPARATION_UNAVAILABLE");
     const groups = [...new Set(prepared.preparation.lines.map((line) => line.fiscal.taxGroup))].sort();
-    const expectedGroups = Object.keys(policy.quantities).sort();
-    if (canonical(groups) !== canonical(expectedGroups))
+    const expectedGroups = policy ? Object.keys(policy.quantities).sort() : undefined;
+    if (expectedGroups && canonical(groups) !== canonical(expectedGroups))
       return fail("FISCAL_SCENARIO_SOURCE_MISMATCH");
+    // Export C is frozen in the invoice source. E alone stays domestic unless
+    // an explicit certification scenario supplies the export classification.
+    const invoiceType = scenarioType ?? (groups.includes("C") ? "EV" : "FV");
+    if (!policy && (groups.includes("F") ||
+      (invoiceType === "EV" && !(groups.length === 1 && groups[0] === "C" ||
+        groups.length === 2 && groups.includes("A") && groups.includes("C")))))
+      return fail("FISCAL_TAX_COMBINATION_UNSUPPORTED");
     const staff = await RestaurantStaffService.dto(
       input.orgId, await RestaurantStaffService.get(input.orgId, input.actorId),
     );
     if (!staff.displayName || staff.status !== "ACTIVE" || !staff.organizationMembershipActive)
       return fail("RESTAURANTS_STAFF_MEMBER_REQUIRED", 403);
     const mapping = restaurantBeninMappingSchema.parse({
-      environment: "TEST", invoiceType: policy.type, priceBasis: "TTC",
+      environment: "TEST", invoiceType, priceBasis: "TTC",
       pricingEvidence: prepared.preparation.commercialRootDigest,
       commercialMinorUnitsPerFranc: 1, taxGroups: groups,
       taxMetadataEvidence: createHash("sha256").update(canonical(
@@ -75,8 +93,8 @@ export class RestaurantFiscalAuthorizationPreparationService {
     const mapped = mapRestaurantBeninRequest(
       prepared.preparation, principal, identity, mapping, "AUTHORIZATION_PROOF",
     );
-    if (!matchesBeninSfeScenario(request.scenarioId, {
-      type: policy.type,
+    if (scenarioId && !matchesBeninSfeScenario(scenarioId, {
+      type: invoiceType,
       items: prepared.preparation.lines.map(line => ({
         taxGroup: line.fiscal.taxGroup,
         quantity: line.commercial.snapshot.quantity,
@@ -84,7 +102,7 @@ export class RestaurantFiscalAuthorizationPreparationService {
       })),
       customer: prepared.preparation.customer,
       aib: prepared.preparation.aib,
-    }, !input.automaticPolicy)) fail("FISCAL_SCENARIO_SOURCE_MISMATCH");
+    }, exactQuantities)) fail("FISCAL_SCENARIO_SOURCE_MISMATCH");
     const fiscal = mapped.fiscalGroupTotals ?? {};
     const expectedFiscalTotals = {
       ta: 0, tb: 18, tc: 0, td: 18,
@@ -96,10 +114,11 @@ export class RestaurantFiscalAuthorizationPreparationService {
       aib: mapped.fiscalAdditionalTotals?.aib ?? 0,
       ts: mapped.fiscalAdditionalTotals?.ts ?? 0, total: mapped.total,
     };
-    return { prepared: prepared.preparation, mapped, mapping, groups, expectedFiscalTotals, scenarioId: request.scenarioId };
+    return { prepared: prepared.preparation, mapped, mapping, groups, expectedFiscalTotals, scenarioId };
   }
   static async prepare(input: Parameters<typeof RestaurantFiscalAuthorizationPreparationService.prepareMapping>[0]) {
     const { prepared, mapped, mapping, groups, expectedFiscalTotals, scenarioId } = await this.prepareMapping(input);
+    if (!scenarioId) return fail("FISCAL_SCENARIO_UNSUPPORTED");
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
     const operations = { CREATE: 1 as const, GET: 2 as const, CONFIRM: 1 as const, CANCEL: 1 as const };
     const proof = await FiscalSourcePreparationProofService.create({

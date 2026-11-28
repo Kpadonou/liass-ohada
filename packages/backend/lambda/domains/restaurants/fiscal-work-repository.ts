@@ -16,6 +16,7 @@ const rowSchema = z.object({
   createdAt: z.string().datetime(), state: z.enum(["PENDING", "CLAIMED", "BLOCKED", "CONFIRMED"]),
   claimToken: z.string().uuid().optional(), claimVersion: z.number().int().nonnegative().optional(),
   claimUntil: z.string().datetime().optional(),
+  blockReason: z.string().regex(/^[A-Z][A-Z0-9_]{2,99}$/).optional(),
 }).strict();
 
 /** One tenant/outlet/day partition per bounded page. The caller advances days explicitly. */
@@ -59,7 +60,8 @@ export class RestaurantFiscalWorkRepository {
   }
   /** Only the current claimant may mark a configuration or authorization block. */
   static async block(input: { orgId: string; outletId: string; invoiceId: string;
-    sessionId: string; createdAt: string }, claim: { token: string; version: number }) {
+    sessionId: string; createdAt: string }, claim: { token: string; version: number }, reason = "FISCAL_PREPARATION_UNRESOLVED") {
+    if (!/^[A-Z][A-Z0-9_]{2,99}$/.test(reason)) throw new Error("Invalid fiscal block reason");
     const key = { PK: K.restaurantBillPK(input.orgId, input.outletId, input.invoiceId),
       SK: K.restaurantFiscalIntentSK() };
     const locator = { PK: K.restaurantFiscalWorkPK(input.orgId, input.outletId,
@@ -67,10 +69,10 @@ export class RestaurantFiscalWorkRepository {
       SK: K.restaurantFiscalWorkSK(input.createdAt, input.invoiceId) };
     const update = (target: typeof key, type: string) => ({ Update: {
       TableName: restaurantsTableName(), Key: marshall(target),
-      UpdateExpression: "SET #state = :blocked",
+      UpdateExpression: "SET #state = :blocked, blockReason = :reason",
       ConditionExpression: "entityType = :type AND orgId = :org AND outletId = :outlet AND invoiceId = :invoice AND sessionId = :session AND createdAt = :created AND #state = :claimed AND claimToken = :token AND claimVersion = :version",
       ExpressionAttributeNames: { "#state": "state" },
-      ExpressionAttributeValues: marshall({ ":blocked": "BLOCKED", ":type": type,
+      ExpressionAttributeValues: marshall({ ":blocked": "BLOCKED", ":reason": reason, ":type": type,
         ":org": input.orgId, ":outlet": input.outletId, ":invoice": input.invoiceId,
         ":session": input.sessionId, ":created": input.createdAt,
         ":claimed": "CLAIMED", ":token": claim.token, ":version": claim.version }),

@@ -7,6 +7,9 @@ import { restaurantsTableName } from "./restaurant-storage";
 import { RestaurantFiscalWorkProcessor } from "./fiscal-work-processor";
 import { realTestFiscalService } from "./real-test-fiscal-handler";
 import { RestaurantFiscalWorkRepository } from "./fiscal-work-repository";
+import { FiscalIssuanceBindingSchema } from "@liass-ohada/shared/shared";
+import { canonical, hash } from "@/lambda/shared/authority/integrity";
+import { prepareBoundRestaurantWorkflow } from "./bound-fiscal-workflow";
 
 export const fiscalWorkRecoveryRequest = z.object({
   type: z.literal("RECOVER_FISCAL_WORK_V1"),
@@ -15,6 +18,11 @@ export const fiscalWorkRecoveryRequest = z.object({
   sessionId: z.string().uuid(),
   invoiceId: z.string().uuid(),
 }).strict();
+export const boundFiscalWorkRecoveryRequest = fiscalWorkRecoveryRequest.extend({
+  type: z.literal("RECOVER_BOUND_FISCAL_WORK_V1"),
+  expectedClaimVersion: z.number().int().nonnegative(),
+  expectedBindingDigest: z.string().regex(/^[a-f0-9]{64}$/),
+});
 
 const blockedIntent = z.object({
   PK: z.string(), SK: z.literal("FISCAL_INTENT#V1"),
@@ -44,6 +52,32 @@ export async function recoverBlockedFiscalWork(input: unknown) {
     orgId: row.orgId, outletId: row.outletId, sessionId: row.sessionId,
     invoiceId: row.invoiceId, actorId: row.actorId, createdAt: row.createdAt,
   });
+}
+
+/** Separate IAM-only recovery for an immutable TEST binding. No replay occurs on deployment. */
+export async function recoverBoundFiscalWork(input: unknown) {
+  const request = boundFiscalWorkRecoveryRequest.parse(input);
+  const PK = K.restaurantBillPK(request.orgId, request.outletId, request.invoiceId);
+  const result = await dynamoClient.send(new GetItemCommand({
+    TableName: restaurantsTableName(), Key: marshall({ PK, SK: K.restaurantFiscalIntentSK() }),
+    ConsistentRead: true,
+  }));
+  if (!result.Item) throw new Error("Blocked fiscal intent not found");
+  const row = blockedIntent.extend({ claimVersion: z.number().int().nonnegative(),
+    fiscalBinding: FiscalIssuanceBindingSchema }).parse(unmarshall(result.Item));
+  if (row.PK !== PK || row.orgId !== request.orgId || row.outletId !== request.outletId ||
+    row.sessionId !== request.sessionId || row.invoiceId !== request.invoiceId ||
+    row.claimVersion !== request.expectedClaimVersion ||
+    hash(canonical(row.fiscalBinding)) !== request.expectedBindingDigest ||
+    row.fiscalBinding.environment !== "TEST")
+    throw new Error("Bound fiscal recovery identity mismatch");
+  const work = { orgId: row.orgId, outletId: row.outletId, sessionId: row.sessionId,
+    invoiceId: row.invoiceId, actorId: row.actorId, createdAt: row.createdAt,
+    fiscalBinding: row.fiscalBinding };
+  // Provider-free source, mapping, reconciliation expectation and credential preflight.
+  await prepareBoundRestaurantWorkflow(work);
+  // The processor's transaction fences the claim against an existing attempt.
+  return RestaurantFiscalWorkProcessor.process(work);
 }
 
 /** IAM-only, provider-free settlement. Never enters the execution processor. */

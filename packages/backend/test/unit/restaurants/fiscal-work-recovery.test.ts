@@ -3,7 +3,9 @@ import { marshall } from "@aws-sdk/util-dynamodb";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
 import { RestaurantFiscalWorkProcessor } from "@/lambda/domains/restaurants/fiscal-work-processor";
-import { recoverBlockedFiscalWork } from "@/lambda/domains/restaurants/fiscal-work-recovery";
+import { recoverBlockedFiscalWork, recoverBoundFiscalWork } from "@/lambda/domains/restaurants/fiscal-work-recovery";
+import * as boundWorkflow from "@/lambda/domains/restaurants/bound-fiscal-workflow";
+import { canonical, hash } from "@/lambda/shared/authority/integrity";
 import { handler, realTestFiscalService } from "@/lambda/domains/restaurants/real-test-fiscal-handler";
 import { RestaurantFiscalWorkRepository } from "@/lambda/domains/restaurants/fiscal-work-repository";
 
@@ -47,6 +49,31 @@ test("duplicate recovery delegates to processor fencing without a second mutatio
   expect(await Promise.all([recoverBlockedFiscalWork(request), recoverBlockedFiscalWork(request)]))
     .toEqual([{ state: "BLOCKED" }, { state: "NOT_CLAIMED" }]);
   expect(processSpy).toHaveBeenCalledTimes(2);
+});
+test("bound recovery requires immutable TEST binding and exact claim version before processor", async () => {
+  const fiscalBinding = { environment: "TEST", connectionId: request.outletId,
+    issuancePointId: request.outletId, policyVersion: 1 };
+  readSpy.mockResolvedValue({ Item: marshall({ ...row, claimVersion: 1, fiscalBinding }) });
+  const preflight = jest.spyOn(boundWorkflow, "prepareBoundRestaurantWorkflow").mockResolvedValue({} as never);
+  const bound = { ...request, type: "RECOVER_BOUND_FISCAL_WORK_V1" as const,
+    expectedClaimVersion: 1, expectedBindingDigest: hash(canonical(fiscalBinding)) };
+  await expect(recoverBoundFiscalWork({ ...bound, expectedClaimVersion: 2 })).rejects.toThrow("identity mismatch");
+  await expect(recoverBoundFiscalWork({ ...bound, expectedBindingDigest: "a".repeat(64) })).rejects.toThrow("identity mismatch");
+  expect(preflight).not.toHaveBeenCalled();
+  expect(processSpy).not.toHaveBeenCalled();
+  await expect(recoverBoundFiscalWork(bound)).resolves.toEqual({ state: "CONFIRMED" });
+  expect(preflight).toHaveBeenCalledWith(expect.objectContaining({ fiscalBinding, invoiceId: request.invoiceId }));
+  expect(processSpy).toHaveBeenCalledTimes(1);
+});
+test("bound recovery preflight failure never claims or invokes provider", async () => {
+  const fiscalBinding = { environment: "TEST", connectionId: request.outletId,
+    issuancePointId: request.outletId, policyVersion: 1 };
+  readSpy.mockResolvedValue({ Item: marshall({ ...row, claimVersion: 1, fiscalBinding }) });
+  jest.spyOn(boundWorkflow, "prepareBoundRestaurantWorkflow").mockRejectedValue(new Error("FISCAL_SOURCE_MISMATCH"));
+  await expect(recoverBoundFiscalWork({ ...request, type: "RECOVER_BOUND_FISCAL_WORK_V1",
+    expectedClaimVersion: 1, expectedBindingDigest: hash(canonical(fiscalBinding)) }))
+    .rejects.toThrow("FISCAL_SOURCE_MISMATCH");
+  expect(processSpy).not.toHaveBeenCalled();
 });
 test("local completion uses persisted confirmation without entering execution, including replay", async () => {
   readSpy.mockResolvedValue({ Item: marshall({ ...row, state: "CLAIMED" }) });

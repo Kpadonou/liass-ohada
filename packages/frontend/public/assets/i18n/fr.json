@@ -5473,7 +5473,7 @@
         "PENDING": "Fiscalisation en attente",
         "PROCESSING": "Fiscalisation en cours",
         "INTERRUPTED": "Traitement fiscal interrompu — confirmation non établie",
-        "BLOCKED": "Fiscalisation en attente d’autorisation",
+        "BLOCKED": "Fiscalisation bloquée — intervention requise",
         "NOT_STARTED": "Non démarrée",
         "RESERVED": "Non confirmée",
         "CREATE_IN_FLIGHT": "Non confirmée",
@@ -5491,6 +5491,13 @@
       "FISCAL_CREATE": "Normaliser la facture",
       "FISCAL_CONFIRM": "Confirmer la normalisation",
       "FISCAL_WORKING": "Normalisation en cours…",
+      "FISCAL_BLOCK_REASON": {
+        "CONFIGURATION": "La configuration fiscale doit être vérifiée avant toute émission.",
+        "TAX_RULE": "La combinaison fiscale doit être vérifiée avant toute émission.",
+        "OPERATOR": "L’opérateur fiscal doit être vérifié avant toute émission.",
+        "SOURCE": "Les données de la facture doivent être vérifiées avant toute émission.",
+        "REVIEW": "Le motif du blocage doit être vérifié avant toute émission."
+      },
       "FISCAL_ACTION_ERROR": "L’opération fiscale est incertaine ou a échoué. Actualisez le statut avant toute action.",
       "FISCAL_LOADING": "Vérification du statut fiscal…",
       "FISCAL_READ_ERROR": "Statut fiscal indisponible. Actualisez pour réessayer.",

@@ -151,15 +151,17 @@ export class RestaurantFiscalApplicationService {
       (!intent.claimUntil || !Number.isFinite(Date.parse(intent.claimUntil)) || Date.parse(intent.claimUntil) <= Date.now())
       ? "INTERRUPTED" as const
       : intent ? intent.state as "PENDING" | "CLAIMED" | "BLOCKED" | "CONFIRMED" : null;
-    return { request, state, source: currentSource, workState,
+    const blockReason = workState === "BLOCKED" && typeof intent?.blockReason === "string" &&
+      /^[A-Z][A-Z0-9_]{2,99}$/.test(intent.blockReason) ? intent.blockReason : undefined;
+    return { request, state, source: currentSource, workState, blockReason,
       bindingView: fiscalBinding ? { environment: fiscalBinding.environment, fiscalBinding } : {} };
   }
   async status(context: Context, input: unknown) {
-    const { request, state, source, workState, bindingView } = await this.readResultState(context, input);
-    return { ...this.view(request, state, "originalFiscalReference" in source ? source.originalFiscalReference : undefined), ...bindingView, workState };
+    const { request, state, source, workState, blockReason, bindingView } = await this.readResultState(context, input);
+    return { ...this.view(request, state, "originalFiscalReference" in source ? source.originalFiscalReference : undefined), ...bindingView, workState, blockReason };
   }
   async confirmedResult(context: Context, input: unknown) {
-    const { request, state, source, workState, bindingView } = await this.readResultState(context, input);
+    const { request, state, source, workState, blockReason, bindingView } = await this.readResultState(context, input);
     const result = this.view(request, state, "originalFiscalReference" in source ? source.originalFiscalReference : undefined);
     // Only persisted, confirmed DGI TEST evidence can enter the receipt document.
     const securityElements = result.confirmed && this.real &&
@@ -173,6 +175,7 @@ export class RestaurantFiscalApplicationService {
       : null;
     return {
       ...result,
+      blockReason,
       ...bindingView,
       workState,
       securityElements,

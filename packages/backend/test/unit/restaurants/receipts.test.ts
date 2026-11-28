@@ -1992,10 +1992,13 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
     const winning = (firstClaim ?? competingClaim)!;
     await expect(RestaurantFiscalWorkRepository.block(claimInput,
       { token: "00000000-0000-4000-8000-000000000000", version: winning.version })).rejects.toThrow();
-    await RestaurantFiscalWorkRepository.block(claimInput, winning);
-    expect((await RestaurantFiscalWorkRepository.pending(org, f.outlet.id, day)).items[0].state).toBe("BLOCKED");
+    await RestaurantFiscalWorkRepository.block(claimInput, winning, "FISCAL_TAX_COMBINATION_UNSUPPORTED");
+    expect((await RestaurantFiscalWorkRepository.pending(org, f.outlet.id, day)).items[0])
+      .toMatchObject({ state: "BLOCKED", blockReason: "FISCAL_TAX_COMBINATION_UNSUPPORTED" });
     const resumed = await RestaurantFiscalWorkRepository.claim(claimInput);
     expect(resumed?.version).toBe(winning.version + 1);
+    expect((await RestaurantFiscalWorkRepository.pending(org, f.outlet.id, day)).items[0].blockReason)
+      .toBe("FISCAL_TAX_COMBINATION_UNSUPPORTED");
     const { obligationIdentity } = await import("@/lambda/domains/fiscal-compliance/core/fiscal-attempt-state");
     const attemptKey = { PK: K.orgKey(org), SK: K.fiscalAttemptEffectSK("TEST", obligationIdentity({
       orgId: org, environment: "TEST", sourceDomain: "restaurants", sourceDocumentType: "INVOICE",

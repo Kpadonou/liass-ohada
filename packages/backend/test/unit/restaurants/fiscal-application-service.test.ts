@@ -95,6 +95,16 @@ test("reads a durable pending intent with a consistent, tenant-scoped key", asyn
   expect(send.mock.calls.at(-1)?.[0]).toBeInstanceOf(GetItemCommand);
   expect((send.mock.calls.at(-1)?.[0] as GetItemCommand).input.ConsistentRead).toBe(true);
 });
+test("projects the persisted blocked reason without inventing authorization status", async () => {
+  jest.spyOn(dynamoClient, "send").mockResolvedValue({ Item: marshall({
+    entityType: "RESTAURANT_FISCAL_INTENT", orgId: context.orgId,
+    outletId: request.outletId, sessionId: request.sessionId,
+    invoiceId: request.invoiceId, state: "BLOCKED", blockReason: "FISCAL_TAX_COMBINATION_UNSUPPORTED",
+  }) } as never);
+  expect(await service.status(context, request)).toMatchObject({
+    status: "NOT_STARTED", workState: "BLOCKED", blockReason: "FISCAL_TAX_COMBINATION_UNSUPPORTED",
+  });
+});
 test("projects an expired claim as interrupted without changing the intent", async () => {
   const send = jest.spyOn(dynamoClient, "send").mockResolvedValue({ Item: marshall({
     entityType: "RESTAURANT_FISCAL_INTENT", orgId: context.orgId,

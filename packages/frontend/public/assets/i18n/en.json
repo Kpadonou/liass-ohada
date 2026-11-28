@@ -5473,7 +5473,7 @@
         "PENDING": "Fiscal processing pending",
         "PROCESSING": "Fiscal processing in progress",
         "INTERRUPTED": "Fiscal processing interrupted — confirmation not established",
-        "BLOCKED": "Fiscal processing awaiting authorization",
+        "BLOCKED": "Fiscal processing blocked — intervention required",
         "NOT_STARTED": "Not started",
         "RESERVED": "Not confirmed",
         "CREATE_IN_FLIGHT": "Not confirmed",
@@ -5491,6 +5491,13 @@
       "FISCAL_CREATE": "Normalize invoice",
       "FISCAL_CONFIRM": "Confirm normalization",
       "FISCAL_WORKING": "Normalization in progress…",
+      "FISCAL_BLOCK_REASON": {
+        "CONFIGURATION": "Fiscal configuration needs review before issuance.",
+        "TAX_RULE": "The fiscal tax combination needs review before issuance.",
+        "OPERATOR": "The fiscal operator needs review before issuance.",
+        "SOURCE": "Invoice source data needs review before issuance.",
+        "REVIEW": "The block reason needs review before issuance."
+      },
       "FISCAL_ACTION_ERROR": "The fiscal operation is uncertain or failed. Refresh status before taking action.",
       "FISCAL_LOADING": "Checking fiscal status…",
       "FISCAL_READ_ERROR": "Fiscal status unavailable. Refresh to retry.",

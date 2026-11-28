@@ -77,6 +77,11 @@ import { restaurantPrice } from '../utils/restaurant-money';
             [tone]="fiscalTone(result.status, result.workState)"
             [label]="'RESTAURANTS.RECEIPT.FISCAL_STATUS.' + fiscalDisplayStatus(result.status, result.workState) | transloco"
           />
+          @if (result.workState === 'BLOCKED') {
+            <p class="mt-1 text-xs text-app-text-secondary">
+              {{ 'RESTAURANTS.RECEIPT.FISCAL_BLOCK_REASON.' + fiscalBlockCategory(result.blockReason) | transloco }}
+            </p>
+          }
           @if (result.securityElements; as security) {
             <dl class="fiscal-security-list mt-2 grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
               <div class="min-w-0">
@@ -311,6 +316,15 @@ export class RestaurantReceiptDocument {
     if (workState === 'PENDING' && status === 'NOT_STARTED') return 'PENDING';
     if (workState === 'CLAIMED' && status === 'NOT_STARTED') return 'PROCESSING';
     return status;
+  }
+  fiscalBlockCategory(reason?: string) {
+    if (reason === 'FISCAL_GATE_DISABLED' || reason === 'FISCAL_AUTOMATIC_SCOPE_DENIED') return 'CONFIGURATION';
+    if (reason === 'FISCAL_TAX_COMBINATION_UNSUPPORTED' || reason === 'UNSUPPORTED_EXPORT_TAX_COMBINATION' ||
+      reason === 'UNSUPPORTED_PROVIDER_TAX_GROUP' || reason === 'FISCAL_SCENARIO_UNSUPPORTED') return 'TAX_RULE';
+    if (reason === 'RESTAURANTS_STAFF_MEMBER_REQUIRED') return 'OPERATOR';
+    if (reason === 'FISCAL_SOURCE_MISMATCH' || reason === 'FISCAL_SOURCE_UNAVAILABLE' ||
+      reason === 'PROVENANCE_UNAVAILABLE' || reason === 'FISCAL_MAPPING_AMOUNT_MISMATCH') return 'SOURCE';
+    return 'REVIEW';
   }
   fiscalTone(status: RestaurantFiscalResultResponse['status'], workState?: RestaurantFiscalResultResponse['workState']): LiassStatusTone {
     if (status === 'CONFIRMED') return 'success';

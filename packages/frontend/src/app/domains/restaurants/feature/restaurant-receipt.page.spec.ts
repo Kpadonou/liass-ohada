@@ -162,7 +162,7 @@ describe('Receipt presentation and complete native print', () => {
     ['PENDING', 'Fiscalisation en attente'],
     ['CLAIMED', 'Fiscalisation en cours'],
     ['INTERRUPTED', 'Traitement fiscal interrompu — confirmation non établie'],
-    ['BLOCKED', 'Fiscalisation en attente d’autorisation'],
+    ['BLOCKED', 'Fiscalisation bloquée — intervention requise'],
   ])('shows durable %s work without inventing a DGI result', async (workState, label) => {
     fiscalApi.result.mockResolvedValue({
       invoiceId: receiptSummary().receiptId, status: 'NOT_STARTED', workState,
@@ -175,6 +175,18 @@ describe('Receipt presentation and complete native print', () => {
       expect(f.nativeElement.textContent).toContain(label);
     });
     expect(f.nativeElement.querySelector('img')).toBeNull();
+  });
+  it('shows a business explanation for a blocked tax rule without exposing the internal code', async () => {
+    fiscalApi.result.mockResolvedValue({ invoiceId: receiptSummary().receiptId,
+      status: 'NOT_STARTED', workState: 'BLOCKED', blockReason: 'FISCAL_TAX_COMBINATION_UNSUPPORTED',
+      securityElements: null, normalizedInvoice: null });
+    const f = create();
+    await loaded(f);
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.nativeElement.textContent).toContain('La combinaison fiscale doit être vérifiée');
+    });
+    expect(f.nativeElement.textContent).not.toContain('FISCAL_TAX_COMBINATION_UNSUPPORTED');
   });
   it('stops automatic polling for interrupted CREATED work', async () => {
     fiscalApi.result.mockResolvedValue({

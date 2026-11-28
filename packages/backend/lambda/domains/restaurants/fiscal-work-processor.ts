@@ -13,6 +13,18 @@ const knownPreReservationFailure = new Set([
   "FISCAL_PREPARATION_UNAVAILABLE", "FISCAL_SOURCE_MISMATCH",
   "FISCAL_MAPPING_EVIDENCE_MISSING", "FISCAL_MAPPING_SOURCE_MISMATCH",
 ]);
+const knownPreparationBlockReasons = new Set([
+  ...knownPreReservationFailure, "FISCAL_AUTOMATIC_SCOPE_DENIED", "FISCAL_SOURCE_UNAVAILABLE",
+  "PROVENANCE_UNAVAILABLE", "FISCAL_TAX_COMBINATION_UNSUPPORTED",
+  "UNSUPPORTED_EXPORT_TAX_COMBINATION", "UNSUPPORTED_PROVIDER_TAX_GROUP",
+  "FISCAL_MAPPING_AMOUNT_MISMATCH", "FISCAL_PRICE_UNREPRESENTABLE",
+  "FISCAL_GATE_DISABLED", "FISCAL_CONNECTION_CHANGED", "PLATFORM_FISCAL_CREDENTIAL_INVALID",
+  "RESTAURANTS_STAFF_MEMBER_REQUIRED", "FISCAL_SCENARIO_UNSUPPORTED",
+]);
+function blockReason(error: unknown) {
+  const code = error instanceof Error ? error.message : "";
+  return knownPreparationBlockReasons.has(code) ? code : "FISCAL_PREPARATION_UNRESOLVED";
+}
 
 type Work = { orgId: string; outletId: string; sessionId: string;
   invoiceId: string; actorId: string; createdAt: string; fiscalBinding?: FiscalIssuanceBinding };
@@ -51,8 +63,8 @@ export class RestaurantFiscalWorkProcessor {
         sessionId: work.sessionId, invoiceId: work.invoiceId,
         sourceDigest: source.evidence.proof.digest,
       });
-    } catch {
-      await RestaurantFiscalWorkRepository.block(work, claim);
+    } catch (error) {
+      await RestaurantFiscalWorkRepository.block(work, claim, blockReason(error));
       return { state: "BLOCKED" as const };
     }
     const attemptId = `AUTO#${work.invoiceId}`;
@@ -83,7 +95,7 @@ export class RestaurantFiscalWorkProcessor {
       if (phase === "INITIATE" && code !== "FISCAL_EXECUTION_UNRESOLVED") {
         console.error(JSON.stringify({ event: "FISCAL_WORK_PRE_RESERVATION_BLOCKED",
           orgId: work.orgId, invoiceId: work.invoiceId, code }));
-        await RestaurantFiscalWorkRepository.block(work, claim);
+        await RestaurantFiscalWorkRepository.block(work, claim, code);
         return { state: "BLOCKED" as const };
       }
       console.error(JSON.stringify({ event: "FISCAL_WORK_UNRESOLVED",
@@ -99,8 +111,8 @@ export class RestaurantFiscalWorkProcessor {
     let prepared: Awaited<ReturnType<typeof prepareBoundRestaurantWorkflow>>;
     try {
       prepared = await prepareBoundRestaurantWorkflow(work);
-    } catch {
-      await RestaurantFiscalWorkRepository.block(work, claim);
+    } catch (error) {
+      await RestaurantFiscalWorkRepository.block(work, claim, blockReason(error));
       return { state: "BLOCKED" as const };
     }
     const { workflow, principal, identity } = prepared;

@@ -76,16 +76,24 @@ test("bound work runs the existing engine without resolving legacy authorization
     .resolves.toEqual({ state: "NOT_CLAIMED" });
   expect(prepare).toHaveBeenCalledTimes(1);
 });
+test("bound eligibility failure persists a precise safe reason before provider mutation", async () => {
+  const bound = { ...work, fiscalBinding: { environment: "TEST" as const, connectionId: work.outletId, policyVersion: 2 } };
+  jest.spyOn(boundWorkflow, "prepareBoundRestaurantWorkflow")
+    .mockRejectedValue(new Error("FISCAL_TAX_COMBINATION_UNSUPPORTED"));
+  expect(await RestaurantFiscalWorkProcessor.process(bound)).toEqual({ state: "BLOCKED" });
+  expect(blockSpy).toHaveBeenCalledWith(bound, claim, "FISCAL_TAX_COMBINATION_UNSUPPORTED");
+  expect(initiateSpy).not.toHaveBeenCalled();
+});
 test.each(["missing authorization", "expired authorization"])("%s stays blocked without provider mutation", async () => {
   jest.spyOn(FiscalTestExecutionAuthorizationService, "readBound").mockRejectedValue(new Error("denied"));
   expect(await RestaurantFiscalWorkProcessor.process(work)).toEqual({ state: "BLOCKED" });
-  expect(blockSpy).toHaveBeenCalledWith(work, claim);
+  expect(blockSpy).toHaveBeenCalledWith(work, claim, "FISCAL_PREPARATION_UNRESOLVED");
   expect(initiateSpy).not.toHaveBeenCalled();
 });
 test("disabled gate stays blocked without provider mutation", async () => {
   process.env.FISCAL_REAL_TEST_ENABLED = "0";
   expect(await RestaurantFiscalWorkProcessor.process(work)).toEqual({ state: "BLOCKED" });
-  expect(blockSpy).toHaveBeenCalledWith(work, claim);
+  expect(blockSpy).toHaveBeenCalledWith(work, claim, "FISCAL_GATE_DISABLED");
   expect(initiateSpy).not.toHaveBeenCalled();
 });
 test("duplicate delivery cannot invoke fiscal service without a claim", async () => {
@@ -119,7 +127,7 @@ test("known pre-reservation seller failure is fenced BLOCKED with safe diagnosti
   const log = jest.spyOn(console, "error").mockImplementation(() => undefined);
   initiateSpy.mockRejectedValue(new Error("FISCAL_SELLER_IDENTITY_INCOMPLETE"));
   expect(await RestaurantFiscalWorkProcessor.process(work)).toEqual({ state: "BLOCKED" });
-  expect(blockSpy).toHaveBeenCalledWith(work, claim);
+  expect(blockSpy).toHaveBeenCalledWith(work, claim, "FISCAL_SELLER_IDENTITY_INCOMPLETE");
   expect(confirmSpy).not.toHaveBeenCalled();
   expect(log).toHaveBeenCalledWith(expect.stringContaining("FISCAL_SELLER_IDENTITY_INCOMPLETE"));
 });

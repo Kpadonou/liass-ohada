@@ -81,6 +81,22 @@ test("authorized commercial actor prepares a server-derived scenario 02 proof", 
   );
 });
 
+test("ordinary group B specific-tax invoice needs no case 07 customer or certification proof", async () => {
+  jest.mocked(preparationModule.prepareRestaurantFiscalInvoice).mockResolvedValueOnce({
+    ...prepared, preparation: { ...prepared.preparation, lines: [{
+      fiscal: { taxGroup: "B", taxSpecificMinor: 2000, classificationEvidence: "verified-tax" },
+      commercial: { snapshot: { quantity: 2 } },
+    }] },
+  } as never);
+  const result = await Service.prepareGeneralMapping(request());
+  expect(result.mapping).toMatchObject({ invoiceType: "FV", taxGroups: ["B"] });
+  expect(result.scenarioId).toBeUndefined();
+  expect(mapperModule.mapRestaurantBeninRequest).toHaveBeenCalledWith(
+    expect.anything(), expect.anything(), expect.anything(), expect.anything(), "AUTHORIZATION_PROOF",
+  );
+  expect(FiscalSourcePreparationProofService.create).not.toHaveBeenCalled();
+});
+
 test.each([
   [{ verified: false, denial: { code: "ACCESS_DENIED" } }, "FISCAL_SOURCE_UNAVAILABLE"],
   [{ verified: false, denial: { code: "NOT_FINAL" } }, "FISCAL_SOURCE_UNAVAILABLE"],
